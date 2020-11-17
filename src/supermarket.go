@@ -14,6 +14,9 @@ import (
 type customer struct {
 	items    int
 	patience int
+	timeAtTill time.Duration
+	enterQAt time.Time
+	timeInQueue time.Duration
 }
 
 type operator struct {
@@ -42,6 +45,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 		if till.open {
 			select {
 			case till.que.customers <- cust:
+				cust.enterQAt = time.Now()
 				return true
 			default:
 				continue
@@ -57,10 +61,13 @@ func (till *que) moveAlong() {
 
 func (op *operator) scan(cust *customer) {
 	n := cust.items
+	cust.timeInQueue = time.Since(cust.enterQAt)
+	start := time.Now()
 	for i := 0; i < n; i++ {
 		r := rand.Intn(int(op.maxScanTime-op.minScanTime)) + int(op.minScanTime+1)
 		time.Sleep(time.Duration(r))
 	}
+	cust.timeAtTill = time.Since(start)
 }
 
 //GLOBALS
@@ -68,14 +75,14 @@ func (op *operator) scan(cust *customer) {
 var numCheckouts = 5
 var checkoutsOpen = 3
 var numOperators = 5
-var numCusts = 100
+var numCusts = 150
 var minItems = 1
 var maxItems = 10
 var minPatience = 1
 var maxPatience = 1
-var maxQueLength int = 5
-var minScanTime time.Duration = 5 * time.Microsecond
-var maxScanTime time.Duration = 10 * time.Microsecond
+var maxQueLength int = 10
+var minScanTime time.Duration = 5 * time.Microsecond *10000
+var maxScanTime time.Duration = 10 * time.Microsecond *10000
 
 var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
@@ -111,7 +118,7 @@ func main() {
 	}
 
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 1}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 1, 0, time.Now(),0}
 	}
 
 	for _, till := range tills {
@@ -120,15 +127,18 @@ func main() {
 				for {
 					select {
 					case c := <-check.que.customers:
+						//end queue time here
 						check.operator.scan(c)
 						check.customersServed++
-						fmt.Println("Till", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c)
+						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
+									"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 					default:
 						continue
 					}
 				}
 			}(till)
 		}
+		
 	}
 
 	//does not need to be goroutine atm, but probably will later
