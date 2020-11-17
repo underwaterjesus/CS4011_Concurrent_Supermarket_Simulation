@@ -113,18 +113,14 @@ func main() {
 
 	for _, till := range tills {
 		if till.open {
-			//fmt.Println("outer for loop")
 			go func(check *checkout) {
-				//fmt.Println("goroutine")
-				for { //figure out how to stop loop
-					//fmt.Println("inner for loop")
+				for {
 					select {
 					case c := <-check.que.customers:
 						check.operator.scan(c)
 						check.customersServed++
 						fmt.Println("Till", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c)
 					default:
-						//fmt.Println("default")
 						continue
 					}
 				}
@@ -133,26 +129,19 @@ func main() {
 	}
 
 	//does not need to be goroutine atm, but probably will later
-	//go func() {
-	//fmt.Println("goroutine")
 SpawnLoop:
 	for c := range custs {
-		//fmt.Println("outer for loop")
 		for {
-			//fmt.Println("inner for loop")
 			select {
 			case <-spawner.C:
-				//fmt.Println("Tick")
 				if c.joinQue(tills) {
 					continue SpawnLoop //joined que
 				} else {
 					continue SpawnLoop //leave store
 				}
 			default:
-				//fmt.Println("default")
 				continue
 			}
 		}
 	}
-	//}()
 }
