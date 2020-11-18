@@ -2,7 +2,6 @@ package main
 
 //Test Pull Request!
 
-
 import (
 	"fmt"
 	"math"
@@ -11,22 +10,22 @@ import (
 )
 
 //STUCTS
-type metric struct{
-	id int
-	customersServed int
-	customersLeft int
-	numCustomers int64
-	totalQueueWait time.Duration
-	totalCheckoutTime time.Duration
+type metric struct {
+	id                  int
+	customersServed     int
+	customersLeft       int
+	numCustomers        int64
+	totalQueueWait      time.Duration
+	totalCheckoutTime   time.Duration
 	checkoutUtilisation float32
 }
 
 type customer struct {
-	items    int
-	patience int
-	tillJoined int
-	timeAtTill time.Duration
-	enterQAt time.Time
+	items       int
+	patience    int
+	tillJoined  int
+	timeAtTill  time.Duration
+	enterQAt    time.Time
 	timeInQueue time.Duration
 }
 
@@ -92,8 +91,8 @@ var maxItems = 10
 var minPatience = 0
 var maxPatience = 1
 var maxQueLength int = 10
-var minScanTime time.Duration = 5 * time.Microsecond *10000
-var maxScanTime time.Duration = 10 * time.Microsecond *10000
+var minScanTime time.Duration = 5 * time.Microsecond * 10000
+var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
 var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
@@ -101,6 +100,7 @@ var spawner = time.NewTicker(custArrivalRate)
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
+
 //thinking about a table per till for the moment to keep track of stats.
 //can combine them for final output?
 //Probably a way to do this with channels...
@@ -112,17 +112,16 @@ type manager struct {
 
 func main() {
 	//SETUP
-	
 
 	for i := range tills {
 		q := make(chan *customer, maxQueLength)
 
 		if i < checkoutsOpen {
 			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, true}
-			metrics[i] = &metric{i+1,0,0,1,0,0,0.0}
+			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0.0}
 		} else {
 			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, false}
-			metrics[i] = &metric{i+1,0,0,1,0,0,0.0}
+			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0.0}
 		}
 	}
 
@@ -137,7 +136,7 @@ func main() {
 	}
 
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, 0, time.Now(),0} 
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, 0, time.Now(), 0}
 	}
 
 	for _, till := range tills {
@@ -152,7 +151,7 @@ func main() {
 						metrics[check.id-1].numCustomers++
 						check.customersServed++
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
-									"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
+							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(metrics[check.id-1].totalQueueWait)/metrics[check.id-1].numCustomers))
 					default:
 						continue
@@ -161,7 +160,7 @@ func main() {
 
 			}(till)
 		}
-		
+
 	}
 
 	//does not need to be goroutine atm, but probably will later
@@ -170,10 +169,10 @@ SpawnLoop:
 		for {
 			select {
 			case <-spawner.C:
-				if c.joinQue(tills){
+				if c.joinQue(tills) {
 					continue SpawnLoop //joined que
 				} else {
-					continue SpawnLoop //leave store
+					continue //wait on que
 				}
 			default:
 				continue
