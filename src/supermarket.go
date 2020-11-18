@@ -17,6 +17,7 @@ type metric struct {
 	numCustomers        int64
 	totalQueueWait      time.Duration
 	totalCheckoutTime   time.Duration
+	totalSimRun			time.Duration
 	checkoutUtilisation float32
 }
 
@@ -24,8 +25,8 @@ type customer struct {
 	items       int
 	patience    int
 	tillJoined  int
-	timeAtTill  time.Duration
 	enterQAt    time.Time
+	timeAtTill  time.Duration
 	timeInQueue time.Duration
 }
 
@@ -34,13 +35,13 @@ type operator struct {
 	maxScanTime time.Duration
 }
 
-type que struct {
+type queue struct {
 	customers chan *customer
 }
 
 type checkout struct {
 	operator        *operator
-	que             *que
+	queue             *queue
 	id              int
 	itemLimit       int
 	customersServed int
@@ -54,7 +55,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 	for _, till := range tills {
 		if till.open {
 			select {
-			case till.que.customers <- cust:
+			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
 				return true
 			default:
@@ -65,7 +66,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 	return false
 }
 
-func (till *que) moveAlong() {
+func (till *queue) moveAlong() {
 	<-till.customers
 }
 
@@ -117,11 +118,11 @@ func main() {
 		q := make(chan *customer, maxQueLength)
 
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, true}
-			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, true}
+			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, false}
-			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, false}
+			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0, 0.0}
 		}
 	}
 
@@ -136,7 +137,7 @@ func main() {
 	}
 
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, 0, time.Now(), 0}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, time.Now(), 0, 0}
 	}
 
 	for _, till := range tills {
@@ -144,7 +145,7 @@ func main() {
 			go func(check *checkout) {
 				for {
 					select {
-					case c := <-check.que.customers:
+					case c := <-check.queue.customers:
 						check.operator.scan(c)
 						metrics[check.id-1].totalQueueWait += c.timeInQueue
 						metrics[check.id-1].totalCheckoutTime += c.timeAtTill
@@ -170,9 +171,9 @@ SpawnLoop:
 			select {
 			case <-spawner.C:
 				if c.joinQue(tills) {
-					continue SpawnLoop //joined que
+					continue SpawnLoop //joined queue
 				} else {
-					continue //wait on que
+					continue //wait on queue
 				}
 			default:
 				continue
