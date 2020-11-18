@@ -84,9 +84,9 @@ func (op *operator) scan(cust *customer) {
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
 var numCheckouts = 5
-var checkoutsOpen = 3
+var checkoutsOpen = 5
 var numOperators = 5
-var numCusts = 150
+var numCusts = 250
 var minItems = 1
 var maxItems = 10
 var minPatience = 0
@@ -147,7 +147,6 @@ func main() {
 					select {
 					case c := <-check.que.customers:
 						check.operator.scan(c)
-						fmt.Println(check.id)
 						metrics[check.id-1].totalQueueWait += c.timeInQueue
 						metrics[check.id-1].totalCheckoutTime += c.timeAtTill
 						metrics[check.id-1].numCustomers++
