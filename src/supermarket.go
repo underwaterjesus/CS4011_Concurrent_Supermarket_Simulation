@@ -11,9 +11,20 @@ import (
 )
 
 //STUCTS
+type metric struct{
+	id int
+	customersServed int
+	customersLeft int
+	numCustomers int64
+	totalQueueWait time.Duration
+	totalCheckoutTime time.Duration
+	checkoutUtilisation float32
+}
+
 type customer struct {
 	items    int
 	patience int
+	tillJoined int
 	timeAtTill time.Duration
 	enterQAt time.Time
 	timeInQueue time.Duration
@@ -78,7 +89,7 @@ var numOperators = 5
 var numCusts = 150
 var minItems = 1
 var maxItems = 10
-var minPatience = 1
+var minPatience = 0
 var maxPatience = 1
 var maxQueLength int = 10
 var minScanTime time.Duration = 5 * time.Microsecond *10000
@@ -90,6 +101,10 @@ var spawner = time.NewTicker(custArrivalRate)
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
+//thinking about a table per till for the moment to keep track of stats.
+//can combine them for final output?
+//Probably a way to do this with channels...
+var metrics = make([]*metric, numCheckouts)
 
 type manager struct {
 	staff []*operator
@@ -97,17 +112,21 @@ type manager struct {
 
 func main() {
 	//SETUP
-	for i, _ := range tills {
+	
+
+	for i := range tills {
 		q := make(chan *customer, maxQueLength)
 
 		if i < checkoutsOpen {
 			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, true}
+			metrics[i] = &metric{i+1,0,0,1,0,0,0.0}
 		} else {
 			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, false}
+			metrics[i] = &metric{i+1,0,0,1,0,0,0.0}
 		}
 	}
 
-	for i, _ := range ops {
+	for i := range ops {
 		ops[i] = &operator{minScanTime, maxScanTime}
 
 		if i < numCheckouts {
@@ -118,7 +137,7 @@ func main() {
 	}
 
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 1, 0, time.Now(),0}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, 0, time.Now(),0} 
 	}
 
 	for _, till := range tills {
@@ -127,15 +146,20 @@ func main() {
 				for {
 					select {
 					case c := <-check.que.customers:
-						//end queue time here
 						check.operator.scan(c)
+						fmt.Println(check.id)
+						metrics[check.id-1].totalQueueWait += c.timeInQueue
+						metrics[check.id-1].totalCheckoutTime += c.timeAtTill
+						metrics[check.id-1].numCustomers++
 						check.customersServed++
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 									"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
+						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(metrics[check.id-1].totalQueueWait)/metrics[check.id-1].numCustomers))
 					default:
 						continue
 					}
 				}
+
 			}(till)
 		}
 		
@@ -147,7 +171,7 @@ SpawnLoop:
 		for {
 			select {
 			case <-spawner.C:
-				if c.joinQue(tills) {
+				if c.joinQue(tills){
 					continue SpawnLoop //joined que
 				} else {
 					continue SpawnLoop //leave store
