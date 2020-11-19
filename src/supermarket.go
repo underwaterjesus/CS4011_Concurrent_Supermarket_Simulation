@@ -15,7 +15,7 @@ type metric struct {
 	id                  int
 	customersServed     int
 	customersLeft       int
-	numCustomers        int64
+	numCustomers        int
 	totalQueueWait      time.Duration
 	totalCheckoutTime   time.Duration
 	checkoutUtilisation float32
@@ -123,10 +123,10 @@ func main() {
 
 		if i < checkoutsOpen {
 			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, true}
-			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0.0}
+			metrics[i] = &metric{i + 1, 0, 0, 0, 0, 0, 0.0}
 		} else {
 			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, false}
-			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0.0}
+			metrics[i] = &metric{i + 1, 0, 0, 0, 0, 0, 0.0}
 		}
 	}
 
@@ -162,7 +162,7 @@ func main() {
 						check.customersServed++
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(metrics[check.id-1].totalQueueWait)/metrics[check.id-1].numCustomers))
+						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(metrics[check.id-1].totalQueueWait)/int64(metrics[check.id-1].numCustomers)))
 					default:
 						continue
 					}
@@ -198,5 +198,15 @@ SpawnLoop:
 	}
 
 	wg.Wait()
-	fmt.Println("****END****")
+	fmt.Println()
+	totalCusts := 0
+	for _, m := range metrics {
+		totalCusts += m.numCustomers
+		fmt.Println("TILL", m.id, "")
+		fmt.Println(" Customers Served:", m.numCustomers)
+		fmt.Println(" Total time waited by customers in queue:", m.totalQueueWait)
+		fmt.Println(" Total time scanning:", m.totalCheckoutTime, "\n")
+	}
+
+	fmt.Println("\nTotal Customers Served:", totalCusts)
 }
