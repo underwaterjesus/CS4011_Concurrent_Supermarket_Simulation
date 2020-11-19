@@ -11,16 +11,6 @@ import (
 )
 
 //STUCTS
-type metric struct {
-	id                  int
-	customersServed     int
-	customersLeft       int
-	numCustomers        int
-	totalQueueWait      time.Duration
-	totalCheckoutTime   time.Duration
-	checkoutUtilisation float32
-}
-
 type customer struct {
 	items       int
 	patience    int
@@ -40,14 +30,20 @@ type que struct {
 }
 
 type checkout struct {
-	operator        *operator
-	que             *que
-	id              int
-	itemLimit       int
-	customersServed int
-	idleTime        int
-	useTime         int
-	open            bool
+	operator           *operator
+	que                *que
+	id                 int
+	itemLimit          int
+	customersServed    int
+	customersLost      int
+	idleTime           time.Duration
+	useTime            time.Duration
+	open               bool
+	totalQueueWait     time.Duration
+	totalScanTime      time.Duration
+	percentTotalCusts  float32
+	percentTimeWorking float32
+	timePerCust        float32
 }
 
 //RECEIVER FUNCTIONS
@@ -83,15 +79,15 @@ func (op *operator) scan(cust *customer) {
 
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
-var numCheckouts = 5
+var numCheckouts = 8
 var checkoutsOpen = 5
-var numOperators = 5
-var numCusts = 12
+var numOperators = 4
+var numCusts = 150
 var minItems = 1
 var maxItems = 10
 var minPatience = 0
 var maxPatience = 1
-var maxQueLength int = 10
+var maxQueLength = 10
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
@@ -104,11 +100,6 @@ var custs = make(chan *customer, numCusts)
 
 var wg = &sync.WaitGroup{}
 
-//thinking about a table per till for the moment to keep track of stats.
-//can combine them for final output?
-//Probably a way to do this with channels...
-var metrics = make([]*metric, numCheckouts)
-
 type manager struct {
 	staff []*operator
 }
@@ -116,17 +107,14 @@ type manager struct {
 func main() {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
-	wg.Add(numCheckouts)
 
 	for i := range tills {
 		q := make(chan *customer, maxQueLength)
 
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, true}
-			metrics[i] = &metric{i + 1, 0, 0, 0, 0, 0, 0.0}
+			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, 0, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, false}
-			metrics[i] = &metric{i + 1, 0, 0, 0, 0, 0, 0.0}
+			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, 0, false, 0, 0, 0.0, 0.0, 0.0}
 		}
 	}
 
@@ -136,6 +124,7 @@ func main() {
 		if i < numCheckouts {
 			if tills[i].open {
 				tills[i].operator = ops[i]
+				wg.Add(1)
 			}
 		}
 	}
@@ -145,7 +134,7 @@ func main() {
 	}
 
 	for _, till := range tills {
-		if till.open {
+		if till.open && till.operator != nil {
 			go func(check *checkout, wg *sync.WaitGroup) {
 				defer wg.Done()
 			Spin:
@@ -156,13 +145,12 @@ func main() {
 							break Spin
 						}
 						check.operator.scan(c)
-						metrics[check.id-1].totalQueueWait += c.timeInQueue
-						metrics[check.id-1].totalCheckoutTime += c.timeAtTill
-						metrics[check.id-1].numCustomers++
+						check.totalQueueWait += c.timeInQueue
+						check.totalScanTime += c.timeAtTill
 						check.customersServed++
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(metrics[check.id-1].totalQueueWait)/int64(metrics[check.id-1].numCustomers)))
+						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
 					default:
 						continue
 					}
@@ -200,12 +188,12 @@ SpawnLoop:
 	wg.Wait()
 	fmt.Println()
 	totalCusts := 0
-	for _, m := range metrics {
-		totalCusts += m.numCustomers
-		fmt.Println("TILL", m.id, "")
-		fmt.Println(" Customers Served:", m.numCustomers)
-		fmt.Println(" Total time waited by customers in queue:", m.totalQueueWait)
-		fmt.Println(" Total time scanning:", m.totalCheckoutTime, "\n")
+	for _, till := range tills {
+		totalCusts += till.customersServed
+		fmt.Println("TILL", till.id, "")
+		fmt.Println(" Customers Served:", till.customersServed)
+		fmt.Println(" Total time waited by customers in queue:", till.totalQueueWait)
+		fmt.Println(" Total time scanning:", till.totalScanTime, "\n")
 	}
 
 	fmt.Println("\nTotal Customers Served:", totalCusts)
