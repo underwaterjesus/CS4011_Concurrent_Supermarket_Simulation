@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -85,7 +86,7 @@ func (op *operator) scan(cust *customer) {
 var numCheckouts = 5
 var checkoutsOpen = 5
 var numOperators = 5
-var numCusts = 250
+var numCusts = 12
 var minItems = 1
 var maxItems = 10
 var minPatience = 0
@@ -101,6 +102,8 @@ var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
 
+var wg = &sync.WaitGroup{}
+
 //thinking about a table per till for the moment to keep track of stats.
 //can combine them for final output?
 //Probably a way to do this with channels...
@@ -112,6 +115,8 @@ type manager struct {
 
 func main() {
 	//SETUP
+	rand.Seed(time.Now().UTC().UnixNano())
+	wg.Add(numCheckouts)
 
 	for i := range tills {
 		q := make(chan *customer, maxQueLength)
@@ -141,10 +146,15 @@ func main() {
 
 	for _, till := range tills {
 		if till.open {
-			go func(check *checkout) {
+			go func(check *checkout, wg *sync.WaitGroup) {
+				defer wg.Done()
+			Spin:
 				for {
 					select {
-					case c := <-check.que.customers:
+					case c, ok := <-check.que.customers:
+						if !ok {
+							break Spin
+						}
 						check.operator.scan(c)
 						metrics[check.id-1].totalQueueWait += c.timeInQueue
 						metrics[check.id-1].totalCheckoutTime += c.timeAtTill
@@ -157,26 +167,36 @@ func main() {
 						continue
 					}
 				}
-
-			}(till)
+			}(till, wg)
 		}
 
 	}
 
 	//does not need to be goroutine atm, but probably will later
 SpawnLoop:
-	for c := range custs {
-		for {
+	for {
+		select {
+		case <-spawner.C:
 			select {
-			case <-spawner.C:
-				if c.joinQue(tills) {
-					continue SpawnLoop //joined que
-				} else {
-					continue //wait on que
+			case c, ok := <-custs:
+				if !ok {
+					break SpawnLoop
+				}
+				for !c.joinQue(tills) {
+
 				}
 			default:
-				continue
+				break SpawnLoop
 			}
+		default:
+			continue
 		}
 	}
+
+	for _, till := range tills {
+		close(till.que.customers)
+	}
+
+	wg.Wait()
+	fmt.Println("****END****")
 }
