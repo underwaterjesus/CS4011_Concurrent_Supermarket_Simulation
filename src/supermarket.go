@@ -36,8 +36,8 @@ type checkout struct {
 	itemLimit          int
 	customersServed    int
 	customersLost      int
-	idleTime           time.Duration
-	useTime            time.Duration
+	startTime          time.Time
+	endTime            time.Time
 	open               bool
 	totalQueueWait     time.Duration
 	totalScanTime      time.Duration
@@ -49,7 +49,7 @@ type checkout struct {
 //RECEIVER FUNCTIONS
 func (cust *customer) joinQue(tills []*checkout) bool {
 	for _, till := range tills {
-		if till.open {
+		if till.open && till.operator != nil {
 			select {
 			case till.que.customers <- cust:
 				cust.enterQAt = time.Now()
@@ -112,9 +112,9 @@ func main() {
 		q := make(chan *customer, maxQueLength)
 
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, 0, true, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, 0, 0, false, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
 		}
 	}
 
@@ -136,7 +136,11 @@ func main() {
 	for _, till := range tills {
 		if till.open && till.operator != nil {
 			go func(check *checkout, wg *sync.WaitGroup) {
-				defer wg.Done()
+				defer func() {
+					wg.Done()
+					check.endTime = time.Now()
+				}()
+				check.startTime = time.Now()
 			Spin:
 				for {
 					select {
@@ -191,9 +195,10 @@ SpawnLoop:
 	for _, till := range tills {
 		totalCusts += till.customersServed
 		fmt.Println("TILL", till.id, "")
-		fmt.Println(" Customers Served:", till.customersServed)
-		fmt.Println(" Total time waited by customers in queue:", till.totalQueueWait)
-		fmt.Println(" Total time scanning:", till.totalScanTime, "\n")
+		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
+		fmt.Println("  Customers Served:", till.customersServed)
+		fmt.Println("  Total time waited by customers in queue:", till.totalQueueWait.Truncate(time.Second))
+		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second), "\n")
 	}
 
 	fmt.Println("\nTotal Customers Served:", totalCusts)
