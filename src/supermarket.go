@@ -56,6 +56,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 		if till.open {
 			select {
 			case till.queue.customers <- cust:
+
 				cust.enterQAt = time.Now()
 				return true
 			default:
@@ -97,6 +98,7 @@ var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
 var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
+var tick = time.NewTicker(custArrivalRate/10)
 
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
@@ -111,9 +113,12 @@ type manager struct {
 	staff []*operator
 }
 
+
+
 func main() {
 	//SETUP
 
+	//checkout setup
 	for i := range tills {
 		q := make(chan *customer, maxQueLength)
 
@@ -126,6 +131,7 @@ func main() {
 		}
 	}
 
+	//checkout operator setup
 	for i := range ops {
 		ops[i] = &operator{minScanTime, maxScanTime}
 
@@ -136,10 +142,12 @@ func main() {
 		}
 	}
 
+	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
 		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, time.Now(), 0, 0}
 	}
 
+	//process customers at tills.
 	for _, till := range tills {
 		if till.open {
 			go func(check *checkout) {
@@ -164,7 +172,7 @@ func main() {
 
 	}
 
-	//does not need to be goroutine atm, but probably will later
+//does not need to be goroutine atm, but probably will later
 SpawnLoop:
 	for c := range custs {
 		for {
@@ -175,6 +183,7 @@ SpawnLoop:
 				} else {
 					continue //wait on queue
 				}
+
 			default:
 				continue
 			}
