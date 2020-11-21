@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-//STUCTS
+//STRUCTS
 type customer struct {
 	items       int
 	patience    int
@@ -54,7 +54,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 			case till.que.customers <- cust:
 				cust.enterQAt = time.Now()
 				return true
-			default:
+			default: //forces reiteration of the loop
 				continue
 			}
 		}
@@ -90,13 +90,15 @@ var maxPatience = 1
 var maxQueLength = 10
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
+var totalItemsProcessed = 0
+var averageItemsPerTrolley = 0
 
 var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
 
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
-var custs = make(chan *customer, numCusts)
+var custs = make(chan *customer, numCusts) //buffer length of numCusts
 
 var wg = &sync.WaitGroup{}
 
@@ -152,6 +154,7 @@ func main() {
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
+						totalItemsProcessed += c.items
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
@@ -201,7 +204,5 @@ SpawnLoop:
 		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second), "\n")
 	}
 
-	fmt.Println("\nTotal Customers Served:", totalCusts)
+	fmt.Println("\nTotal Customers Served:", totalCusts, "\nTotal Items Processed", totalItemsProcessed, "\nAverage Items Per Trolley", int(totalItemsProcessed/totalCusts))
 }
-
-//branch test
