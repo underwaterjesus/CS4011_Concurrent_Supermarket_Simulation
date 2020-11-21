@@ -6,21 +6,11 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 //STUCTS
-type metric struct {
-	id                  int
-	customersServed     int
-	customersLeft       int
-	numCustomers        int64
-	totalQueueWait      time.Duration
-	totalCheckoutTime   time.Duration
-	totalSimRun			time.Duration
-	checkoutUtilisation float32
-}
-
 type customer struct {
 	items       int
 	patience    int
@@ -40,20 +30,26 @@ type queue struct {
 }
 
 type checkout struct {
-	operator        *operator
-	queue             *queue
-	id              int
-	itemLimit       int
-	customersServed int
-	idleTime        int
-	useTime         int
-	open            bool
+	operator           *operator
+	que                *que
+	id                 int
+	itemLimit          int
+	customersServed    int
+	customersLost      int
+	startTime          time.Time
+	endTime            time.Time
+	open               bool
+	totalQueueWait     time.Duration
+	totalScanTime      time.Duration
+	percentTotalCusts  float32
+	percentTimeWorking float32
+	timePerCust        float32
 }
 
 //RECEIVER FUNCTIONS
 func (cust *customer) joinQue(tills []*checkout) bool {
 	for _, till := range tills {
-		if till.open {
+		if till.open && till.operator != nil {
 			select {
 			case till.queue.customers <- cust:
 
@@ -84,15 +80,15 @@ func (op *operator) scan(cust *customer) {
 
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
-var numCheckouts = 5
+var numCheckouts = 8
 var checkoutsOpen = 5
-var numOperators = 5
-var numCusts = 250
+var numOperators = 4
+var numCusts = 150
 var minItems = 1
 var maxItems = 10
 var minPatience = 0
 var maxPatience = 1
-var maxQueLength int = 10
+var maxQueLength = 10
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
@@ -104,10 +100,7 @@ var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
 
-//thinking about a table per till for the moment to keep track of stats.
-//can combine them for final output?
-//Probably a way to do this with channels...
-var metrics = make([]*metric, numCheckouts)
+var wg = &sync.WaitGroup{}
 
 type manager struct {
 	staff []*operator
@@ -117,17 +110,16 @@ type manager struct {
 
 func main() {
 	//SETUP
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	//checkout setup
 	for i := range tills {
 		q := make(chan *customer, maxQueLength)
 
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, true}
-			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0, 0.0}
+			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, false}
-			metrics[i] = &metric{i + 1, 0, 0, 1, 0, 0, 0, 0.0}
+			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
 		}
 	}
 
@@ -138,6 +130,7 @@ func main() {
 		if i < numCheckouts {
 			if tills[i].open {
 				tills[i].operator = ops[i]
+				wg.Add(1)
 			}
 		}
 	}
@@ -149,44 +142,73 @@ func main() {
 
 	//process customers at tills.
 	for _, till := range tills {
-		if till.open {
-			go func(check *checkout) {
+		if till.open && till.operator != nil {
+			go func(check *checkout, wg *sync.WaitGroup) {
+				defer func() {
+					wg.Done()
+					check.endTime = time.Now()
+				}()
+				check.startTime = time.Now()
+			Spin:
 				for {
 					select {
-					case c := <-check.queue.customers:
+					case c, ok := <-check.que.customers:
+						if !ok {
+							break Spin
+						}
 						check.operator.scan(c)
-						metrics[check.id-1].totalQueueWait += c.timeInQueue
-						metrics[check.id-1].totalCheckoutTime += c.timeAtTill
-						metrics[check.id-1].numCustomers++
+						check.totalQueueWait += c.timeInQueue
+						check.totalScanTime += c.timeAtTill
 						check.customersServed++
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(metrics[check.id-1].totalQueueWait)/metrics[check.id-1].numCustomers))
+						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
 					default:
 						continue
 					}
 				}
-
-			}(till)
+			}(till, wg)
 		}
 
 	}
 
 //does not need to be goroutine atm, but probably will later
 SpawnLoop:
-	for c := range custs {
-		for {
+	for {
+		select {
+		case <-spawner.C:
 			select {
-			case <-spawner.C:
-				if c.joinQue(tills) {
-					continue SpawnLoop //joined queue
-				} else {
-					continue //wait on queue
+			case c, ok := <-custs:
+				if !ok {
+					break SpawnLoop
+				}
+				for !c.joinQue(tills) {
+
 				}
 
 			default:
-				continue
+				break SpawnLoop
 			}
+		default:
+			continue
 		}
 	}
+
+	for _, till := range tills {
+		close(till.que.customers)
+	}
+
+	wg.Wait()
+	fmt.Println()
+	totalCusts := 0
+	for _, till := range tills {
+		totalCusts += till.customersServed
+		fmt.Println("TILL", till.id, "")
+		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
+		fmt.Println("  Customers Served:", till.customersServed)
+		fmt.Println("  Total time waited by customers in queue:", till.totalQueueWait.Truncate(time.Second))
+		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second), "\n")
+	}
+
+	fmt.Println("\nTotal Customers Served:", totalCusts)
 }
