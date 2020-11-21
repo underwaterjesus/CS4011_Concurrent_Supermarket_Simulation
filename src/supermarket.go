@@ -89,6 +89,7 @@ var numCheckouts = 8
 var checkoutsOpen = 5
 var numOperators = 4
 var numCusts = 150
+var custsLost = 0
 var minItems = 1
 var maxItems = 15
 var minPatience = 0
@@ -196,6 +197,7 @@ SpawnLoop:
 					break SpawnLoop
 				}
 				if !c.joinQue(tills) {
+					custsLost++
 					fmt.Println("A customer left")
 				}
 
@@ -227,5 +229,6 @@ SpawnLoop:
 	}
 
 	fmt.Println("\nTotal Customers Served:", totalCusts)
+	fmt.Println("\nTotal Customers Lost  :", custsLost)
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 }
