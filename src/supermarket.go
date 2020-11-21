@@ -1,7 +1,5 @@
 package main
 
-//Test Pull Request!
-
 import (
 	"fmt"
 	"math"
@@ -15,8 +13,8 @@ type customer struct {
 	items       int
 	patience    int
 	tillJoined  int
-	timeAtTill  time.Duration
 	enterQAt    time.Time
+	timeAtTill  time.Duration
 	timeInQueue time.Duration
 }
 
@@ -66,6 +64,14 @@ func (till *queue) moveAlong() {
 	<-till.customers
 }
 
+func (cust *customer) checkPatience() bool {
+	timeWaited := time.Since(cust.enterQAt)
+	if(timeWaited > (3*time.Second)) { //need to address the int issue here
+		return false
+	}
+	return true
+}
+
 func (op *operator) scan(cust *customer) {
 	n := cust.items
 	cust.timeInQueue = time.Since(cust.enterQAt)
@@ -84,15 +90,16 @@ var checkoutsOpen = 5
 var numOperators = 4
 var numCusts = 150
 var minItems = 1
-var maxItems = 10
+var maxItems = 15
 var minPatience = 0
 var maxPatience = 1
 var maxQueueLength = 10
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
-var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
+var custArrivalRate time.Duration = 3000 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
+var tick = time.NewTicker(custArrivalRate/10)
 
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
@@ -108,9 +115,16 @@ func main() {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 
+	//This seems like an appropriate place for the time mark, 
+	//like when the manager first opens the door to the market at the start of the day.
+	simStart := time.Now()
+
+	//checkout setup
 	for i := range tills {
 		q := make(chan *customer, maxQueueLength)
 
+		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait, 
+		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
 			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
@@ -118,6 +132,7 @@ func main() {
 		}
 	}
 
+	//checkout operator setup
 	for i := range ops {
 		ops[i] = &operator{minScanTime, maxScanTime}
 
@@ -129,12 +144,16 @@ func main() {
 		}
 	}
 
+
+	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, 0, time.Now(), 0}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, time.Now(), 0, 0}
 	}
 
+	//process customers at tills.
 	for _, till := range tills {
 		if till.open && till.operator != nil {
+
 			go func(check *checkout, wg *sync.WaitGroup) {
 				defer func() {
 					wg.Done()
@@ -148,13 +167,16 @@ func main() {
 						if !ok {
 							break Spin
 						}
+						
 						check.operator.scan(c)
+
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
+
 					default:
 						continue
 					}
@@ -164,7 +186,9 @@ func main() {
 
 	}
 
-	//does not need to be goroutine atm, but probably will later
+
+
+//does not need to be goroutine atm, but probably will later
 SpawnLoop:
 	for {
 		select {
@@ -174,9 +198,10 @@ SpawnLoop:
 				if !ok {
 					break SpawnLoop
 				}
-				for !c.joinQue(tills) {
-
+				if !c.joinQue(tills) {
+					fmt.Println("A customer left")
 				}
+
 			default:
 				break SpawnLoop
 			}
@@ -190,6 +215,7 @@ SpawnLoop:
 	}
 
 	wg.Wait()
+	simRunTime := time.Since(simStart)
 	fmt.Println()
 	totalCusts := 0
 	for _, till := range tills {
@@ -202,4 +228,5 @@ SpawnLoop:
 	}
 
 	fmt.Println("\nTotal Customers Served:", totalCusts)
+	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 }
