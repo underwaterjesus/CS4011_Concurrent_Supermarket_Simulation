@@ -25,13 +25,13 @@ type operator struct {
 	maxScanTime time.Duration
 }
 
-type que struct {
+type queue struct {
 	customers chan *customer
 }
 
 type checkout struct {
 	operator           *operator
-	que                *que
+	queue              *queue
 	id                 int
 	itemLimit          int
 	customersServed    int
@@ -51,7 +51,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 	for _, till := range tills {
 		if till.open && till.operator != nil {
 			select {
-			case till.que.customers <- cust:
+			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
 				return true
 			default:
@@ -62,7 +62,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 	return false
 }
 
-func (till *que) moveAlong() {
+func (till *queue) moveAlong() {
 	<-till.customers
 }
 
@@ -87,7 +87,7 @@ var minItems = 1
 var maxItems = 10
 var minPatience = 0
 var maxPatience = 1
-var maxQueLength = 10
+var maxQueueLength = 10
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
@@ -109,12 +109,12 @@ func main() {
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	for i := range tills {
-		q := make(chan *customer, maxQueLength)
+		q := make(chan *customer, maxQueueLength)
 
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
 		}
 	}
 
@@ -144,7 +144,7 @@ func main() {
 			Spin:
 				for {
 					select {
-					case c, ok := <-check.que.customers:
+					case c, ok := <-check.queue.customers:
 						if !ok {
 							break Spin
 						}
@@ -186,7 +186,7 @@ SpawnLoop:
 	}
 
 	for _, till := range tills {
-		close(till.que.customers)
+		close(till.queue.customers)
 	}
 
 	wg.Wait()
