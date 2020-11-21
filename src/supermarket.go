@@ -45,6 +45,9 @@ type checkout struct {
 	percentTimeWorking float32
 	timePerCust        float32
 }
+type manager struct {
+	restrictedTills []*checkout
+}
 
 //RECEIVER FUNCTIONS
 func (cust *customer) joinQue(tills []*checkout) bool {
@@ -101,10 +104,6 @@ var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts) //buffer length of numCusts
 
 var wg = &sync.WaitGroup{}
-
-type manager struct {
-	staff []*operator
-}
 
 func main() {
 	//SETUP
