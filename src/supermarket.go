@@ -65,15 +65,11 @@ func (till *queue) moveAlong() {
 }
 
 func (cust *customer) checkPatience() bool {
-	timeWaited := time.Now()-cust.enterQAt
-	if(timeWaited > (cust.patience*time.Second)) {
+	timeWaited := time.Since(cust.enterQAt)
+	if(timeWaited > (3*time.Second)) { //need to address the int issue here
 		return false
 	}
-	
 	return true
-	
-
-
 }
 
 func (op *operator) scan(cust *customer) {
@@ -94,14 +90,14 @@ var checkoutsOpen = 5
 var numOperators = 4
 var numCusts = 150
 var minItems = 1
-var maxItems = 10
+var maxItems = 15
 var minPatience = 0
 var maxPatience = 1
-var maxQueLength = 15
+var maxQueLength = 5
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
-var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
+var custArrivalRate time.Duration = 3000 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
 var tick = time.NewTicker(custArrivalRate/10)
 
@@ -148,6 +144,7 @@ func main() {
 		}
 	}
 
+
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
 		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, time.Now(), 0, 0}
@@ -170,20 +167,16 @@ func main() {
 						if !ok {
 							break Spin
 						}
-						select {
-						case c.checkPatience:
-							check.operator.scan(c)
-							check.totalQueueWait += c.timeInQueue
-							check.totalScanTime += c.timeAtTill
-							check.customersServed++
-							fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
-								"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-							fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
-						case !c.checkPatience:
-							fmt.Println("this customer left")
-						default:
-							continue
-						}
+						
+						check.operator.scan(c)
+
+						check.totalQueueWait += c.timeInQueue
+						check.totalScanTime += c.timeAtTill
+						check.customersServed++
+						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
+							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
+						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
+
 					default:
 						continue
 					}
@@ -205,8 +198,8 @@ SpawnLoop:
 				if !ok {
 					break SpawnLoop
 				}
-				for !c.joinQue(tills) {
-
+				if !c.joinQue(tills) {
+					fmt.Println("A customer left")
 				}
 
 			default:
