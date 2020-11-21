@@ -1,7 +1,5 @@
 package main
 
-//Test Pull Request!
-
 import (
 	"fmt"
 	"math"
@@ -31,7 +29,7 @@ type queue struct {
 
 type checkout struct {
 	operator           *operator
-	que                *que
+	queue              *queue
 	id                 int
 	itemLimit          int
 	customersServed    int
@@ -52,7 +50,6 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 		if till.open && till.operator != nil {
 			select {
 			case till.queue.customers <- cust:
-
 				cust.enterQAt = time.Now()
 				return true
 			default:
@@ -65,6 +62,18 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 
 func (till *queue) moveAlong() {
 	<-till.customers
+}
+
+func (cust *customer) checkPatience() bool {
+	timeWaited := time.Now()-cust.enterQAt
+	if(timeWaited > (cust.patience*time.Second)) {
+		return false
+	}
+	
+	return true
+	
+
+
 }
 
 func (op *operator) scan(cust *customer) {
@@ -88,7 +97,7 @@ var minItems = 1
 var maxItems = 10
 var minPatience = 0
 var maxPatience = 1
-var maxQueLength = 10
+var maxQueLength = 15
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
@@ -106,20 +115,24 @@ type manager struct {
 	staff []*operator
 }
 
-
-
 func main() {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
+
+	//This seems like an appropriate place for the time mark, 
+	//like when the manager first opens the door to the market at the start of the day.
+	simStart := time.Now()
 
 	//checkout setup
 	for i := range tills {
 		q := make(chan *customer, maxQueLength)
 
+		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait, 
+		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &que{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
 		}
 	}
 
@@ -143,6 +156,7 @@ func main() {
 	//process customers at tills.
 	for _, till := range tills {
 		if till.open && till.operator != nil {
+
 			go func(check *checkout, wg *sync.WaitGroup) {
 				defer func() {
 					wg.Done()
@@ -152,17 +166,24 @@ func main() {
 			Spin:
 				for {
 					select {
-					case c, ok := <-check.que.customers:
+					case c, ok := <-check.queue.customers:
 						if !ok {
 							break Spin
 						}
-						check.operator.scan(c)
-						check.totalQueueWait += c.timeInQueue
-						check.totalScanTime += c.timeAtTill
-						check.customersServed++
-						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
-							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
+						select {
+						case c.checkPatience:
+							check.operator.scan(c)
+							check.totalQueueWait += c.timeInQueue
+							check.totalScanTime += c.timeAtTill
+							check.customersServed++
+							fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
+								"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
+							fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
+						case !c.checkPatience:
+							fmt.Println("this customer left")
+						default:
+							continue
+						}
 					default:
 						continue
 					}
@@ -171,6 +192,8 @@ func main() {
 		}
 
 	}
+
+
 
 //does not need to be goroutine atm, but probably will later
 SpawnLoop:
@@ -195,10 +218,11 @@ SpawnLoop:
 	}
 
 	for _, till := range tills {
-		close(till.que.customers)
+		close(till.queue.customers)
 	}
 
 	wg.Wait()
+	simRunTime := time.Since(simStart)
 	fmt.Println()
 	totalCusts := 0
 	for _, till := range tills {
@@ -211,4 +235,5 @@ SpawnLoop:
 	}
 
 	fmt.Println("\nTotal Customers Served:", totalCusts)
+	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 }
