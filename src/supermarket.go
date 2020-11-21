@@ -93,7 +93,7 @@ var minItems = 1
 var maxItems = 15
 var minPatience = 0
 var maxPatience = 1
-var maxQueLength = 5
+var maxQueLength = 10
 var minScanTime time.Duration = 5 * time.Microsecond * 10000
 var maxScanTime time.Duration = 10 * time.Microsecond * 10000
 
