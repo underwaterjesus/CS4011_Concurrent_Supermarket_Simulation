@@ -11,9 +11,8 @@ import (
 //STRUCTS
 type customer struct {
 	items       int
-	patience    int
-	tillJoined  int
 	enterQAt    time.Time
+	patience    time.Duration
 	timeAtTill  time.Duration
 	timeInQueue time.Duration
 }
@@ -70,7 +69,7 @@ func (till *queue) moveAlong() {
 
 func (cust *customer) checkPatience() bool {
 	timeWaited := time.Since(cust.enterQAt)
-	if timeWaited > (3 * time.Second) { //need to address the int issue here
+	if timeWaited > (cust.patience) { //need to address the int issue here
 		return false
 	}
 	return true
@@ -93,17 +92,18 @@ var numCheckouts = 8
 var checkoutsOpen = 5
 var numOperators = 4
 var numCusts = 150
+var custsLost = 0
 var minItems = 1
 var maxItems = 15
 var minPatience = 0
 var maxPatience = 1
 var maxQueueLength = 10
-var minScanTime time.Duration = 5 * time.Microsecond * 10000
-var maxScanTime time.Duration = 10 * time.Microsecond * 10000
+
+var minScanTime time.Duration = 5 * time.Microsecond
+var maxScanTime time.Duration = 10 * time.Microsecond
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
-
-var custArrivalRate time.Duration = 3000 * time.Microsecond //5mins scaled secs->microsecs
+var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
 var tick = time.NewTicker(custArrivalRate / 10)
 
@@ -148,7 +148,7 @@ func main() {
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, 0, time.Now(), 0, 0}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, time.Now(), 0, 0, time.Second}
 	}
 
 	//process customers at tills.
@@ -199,6 +199,7 @@ SpawnLoop:
 					break SpawnLoop
 				}
 				if !c.joinQue(tills) {
+					custsLost++
 					fmt.Println("A customer left")
 				}
 
@@ -209,6 +210,8 @@ SpawnLoop:
 			continue
 		}
 	}
+
+	spawner.Stop()
 
 	for _, till := range tills {
 		close(till.queue.customers)
@@ -229,6 +232,7 @@ SpawnLoop:
 	}
 
 	fmt.Println("\nTotal Customers Served:", totalCusts)
+	fmt.Println("\nTotal Customers Lost  :", custsLost)
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 	fmt.Println("Total Items Processed:", totalItemsProcessed)
 	fmt.Println("Mean Average Item per customer", (totalItemsProcessed / totalCusts))
