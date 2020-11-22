@@ -42,21 +42,31 @@ type checkout struct {
 	percentTotalCusts  float32
 	percentTimeWorking float32
 	timePerCust        float32
+	numInQ			   int
 }
+
+type byQLength []*checkout
+
+func (a byQLength) Len() int           { return len(a) }
+func (a byQLength) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byQLength) Less(i, j int) bool { return a[i].numInQ < a[j].numInQ }
 
 //RECEIVER FUNCTIONS
 func (cust *customer) joinQue(tills []*checkout) bool {
+	//sort.Sort(byQLength(tills))
 	for _, till := range tills {
 		if till.open && till.operator != nil {
 			select {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
+				till.numInQ++
 				return true
 			default:
 				continue
 			}
 		}
 	}
+
 	return false
 }
 
@@ -85,20 +95,20 @@ func (op *operator) scan(cust *customer) {
 
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
-var numCheckouts = 8
+var scale int64 = 10000
+var numCheckouts = 5
 var checkoutsOpen = 5
-var numOperators = 4
-var numCusts = 150
+var numOperators = 5
+var numCusts = 100
 var custsLost = 0
 var minItems = 1
 var maxItems = 15
 var minPatience = 0
 var maxPatience = 1
-var maxQueueLength = 10
-var minScanTime time.Duration = 5 * time.Microsecond
-var maxScanTime time.Duration = 10 * time.Microsecond
-
-var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
+var maxQueueLength = 6
+var minScanTime time.Duration = 500 * time.Microsecond * 100
+var maxScanTime time.Duration = 1000 * time.Microsecond * 100
+var custArrivalRate time.Duration = 300 * time.Microsecond * 100 //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
 var tick = time.NewTicker(custArrivalRate / 10)
 
@@ -127,9 +137,9 @@ func main() {
 		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait,
 		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
 		} else {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0, 0}
 		}
 	}
 
@@ -167,15 +177,16 @@ func main() {
 						if !ok {
 							break Spin
 						}
-
+						check.numInQ--
 						check.operator.scan(c)
 
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
-						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
-							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
+						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
+						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
+						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
+						//fmt.Println("Currently", check.numInQ, "in queue", check.id)
 
 					default:
 						continue
@@ -198,7 +209,7 @@ SpawnLoop:
 				}
 				if !c.joinQue(tills) {
 					custsLost++
-					fmt.Println("A customer left")
+					//fmt.Println("A customer left")
 				}
 
 			default:
@@ -221,11 +232,11 @@ SpawnLoop:
 	totalCusts := 0
 	for _, till := range tills {
 		totalCusts += till.customersServed
-		fmt.Println("TILL", till.id, "")
+		fmt.Println("\nTILL", till.id, "")
 		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
 		fmt.Println("  Customers Served:", till.customersServed)
 		fmt.Println("  Total time waited by customers in queue:", till.totalQueueWait.Truncate(time.Second))
-		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second), "\n")
+		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second))
 	}
 
 	fmt.Println("\nTotal Customers Served:", totalCusts)
