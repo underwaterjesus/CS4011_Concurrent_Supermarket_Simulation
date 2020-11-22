@@ -34,6 +34,7 @@ type checkout struct {
 	itemLimit          int
 	customersServed    int
 	customersLost      int
+	itemsProcessed     int
 	startTime          time.Time
 	endTime            time.Time
 	open               bool
@@ -69,7 +70,7 @@ func (till *queue) moveAlong() {
 
 func (cust *customer) checkPatience() bool {
 	timeWaited := time.Since(cust.enterQAt)
-	if(timeWaited > (3*time.Second)) { //need to address the int issue here
+	if timeWaited > (3 * time.Second) { //need to address the int issue here
 		return false
 	}
 	return true
@@ -104,7 +105,7 @@ var averageItemsPerTrolley = 0
 
 var custArrivalRate time.Duration = 3000 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
-var tick = time.NewTicker(custArrivalRate/10)
+var tick = time.NewTicker(custArrivalRate / 10)
 
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
@@ -116,7 +117,7 @@ func main() {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	//This seems like an appropriate place for the time mark, 
+	//This seems like an appropriate place for the time mark,
 	//like when the manager first opens the door to the market at the start of the day.
 	simStart := time.Now()
 
@@ -124,12 +125,12 @@ func main() {
 	for i := range tills {
 		q := make(chan *customer, maxQueueLength)
 
-		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait, 
+		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait,
 		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
 		}
 	}
 
@@ -144,7 +145,6 @@ func main() {
 			}
 		}
 	}
-
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
@@ -168,13 +168,13 @@ func main() {
 						if !ok {
 							break Spin
 						}
-						
+
 						check.operator.scan(c)
 
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
-						totalItemsProcessed += c.items
+						check.itemsProcessed += c.items
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
@@ -188,9 +188,7 @@ func main() {
 
 	}
 
-
-
-//does not need to be goroutine atm, but probably will later
+	//does not need to be goroutine atm, but probably will later
 SpawnLoop:
 	for {
 		select {
@@ -222,6 +220,7 @@ SpawnLoop:
 	totalCusts := 0
 	for _, till := range tills {
 		totalCusts += till.customersServed
+		totalItemsProcessed += till.itemsProcessed
 		fmt.Println("TILL", till.id, "")
 		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
 		fmt.Println("  Customers Served:", till.customersServed)
@@ -229,10 +228,8 @@ SpawnLoop:
 		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second), "\n")
 	}
 
-<<<<<<< HEAD
-	fmt.Println("\nTotal Customers Served:", totalCusts, "\nTotal Items Processed", totalItemsProcessed, "\nAverage Items Per Trolley", int(totalItemsProcessed/totalCusts))
-=======
 	fmt.Println("\nTotal Customers Served:", totalCusts)
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
->>>>>>> master
+	fmt.Println("Total Items Processed:", totalItemsProcessed)
+	fmt.Println("Mean Average Item per customer", (totalItemsProcessed / totalCusts))
 }
