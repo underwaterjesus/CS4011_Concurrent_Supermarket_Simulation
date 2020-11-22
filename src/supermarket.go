@@ -8,10 +8,9 @@ import (
 	"time"
 )
 
-//STUCTS
+//STRUCTS
 type customer struct {
 	items       int
-	tillJoined  int
 	enterQAt    time.Time
 	patience    time.Duration
 	timeAtTill  time.Duration
@@ -34,6 +33,7 @@ type checkout struct {
 	itemLimit          int
 	customersServed    int
 	customersLost      int
+	itemsProcessed     int
 	startTime          time.Time
 	endTime            time.Time
 	open               bool
@@ -42,6 +42,9 @@ type checkout struct {
 	percentTotalCusts  float32
 	percentTimeWorking float32
 	timePerCust        float32
+}
+type manager struct {
+	restrictedTills []*checkout
 }
 
 //RECEIVER FUNCTIONS
@@ -52,7 +55,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
 				return true
-			default:
+			default: //forces reiteration of the loop
 				continue
 			}
 		}
@@ -95,22 +98,20 @@ var maxItems = 15
 var minPatience = 0
 var maxPatience = 1
 var maxQueueLength = 10
+
 var minScanTime time.Duration = 5 * time.Microsecond
 var maxScanTime time.Duration = 10 * time.Microsecond
-
+var totalItemsProcessed = 0
+var averageItemsPerTrolley = 0
 var custArrivalRate time.Duration = 300 * time.Microsecond //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
 var tick = time.NewTicker(custArrivalRate / 10)
 
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
-var custs = make(chan *customer, numCusts)
+var custs = make(chan *customer, numCusts) //buffer length of numCusts
 
 var wg = &sync.WaitGroup{}
-
-type manager struct {
-	staff []*operator
-}
 
 func main() {
 	//SETUP
@@ -127,9 +128,9 @@ func main() {
 		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait,
 		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0}
 		} else {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0}
 		}
 	}
 
@@ -173,6 +174,7 @@ func main() {
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
+						check.itemsProcessed += c.items
 						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
@@ -221,6 +223,7 @@ SpawnLoop:
 	totalCusts := 0
 	for _, till := range tills {
 		totalCusts += till.customersServed
+		totalItemsProcessed += till.itemsProcessed
 		fmt.Println("TILL", till.id, "")
 		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
 		fmt.Println("  Customers Served:", till.customersServed)
@@ -231,4 +234,6 @@ SpawnLoop:
 	fmt.Println("\nTotal Customers Served:", totalCusts)
 	fmt.Println("\nTotal Customers Lost  :", custsLost)
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
+	fmt.Println("Total Items Processed:", totalItemsProcessed)
+	fmt.Println("Mean Average Item per customer", (totalItemsProcessed / totalCusts))
 }
