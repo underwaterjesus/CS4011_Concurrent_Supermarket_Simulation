@@ -55,7 +55,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
 				return true
-			default: //forces reiteration of the loop
+			default:
 				continue
 			}
 		}
@@ -69,7 +69,7 @@ func (till *queue) moveAlong() {
 
 func (cust *customer) checkPatience() bool {
 	timeWaited := time.Since(cust.enterQAt)
-	if timeWaited > (cust.patience) { //need to address the int issue here
+	if timeWaited > (cust.patience) {
 		return false
 	}
 	return true
@@ -175,9 +175,9 @@ func main() {
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
 						check.itemsProcessed += c.items
-						fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
-							"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
+						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
+						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
+						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
 
 					default:
 						continue
