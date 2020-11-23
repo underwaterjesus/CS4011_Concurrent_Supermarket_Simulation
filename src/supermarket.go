@@ -288,8 +288,9 @@ SpawnLoop:
 	totalCusts := 0
 
 	fmt.Println("Manager Name:", mrManager.name,"\nItem Limit:", mrManager.itemLimit,"\nIs smart?:", mrManager.isSmart,"\nItem Limited Checkouts?:", mrManager.isQuikCheck,"\nQuikCheckChance:", mrManager.cappedCheckRate)
-
-	sort.Sort(byTillID(tills))
+	if(smartCusts){
+		sort.Sort(byTillID(tills))
+	}
 	for _, till := range tills {
 		totalCusts += till.customersServed
 		fmt.Println("\nTILL", till.id, "")
