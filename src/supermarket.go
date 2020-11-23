@@ -73,6 +73,24 @@ func (a byScanTime) Len() int           { return len(a) }
 func (a byScanTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byScanTime) Less(i, j int) bool { return int(a[i].scanTime) < int(a[j].scanTime) }
 
+type byQLength []*checkout
+
+func (a byQLength) Len() int           { return len(a) }
+func (a byQLength) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byQLength) Less(i, j int) bool { return a[i].numInQ < a[j].numInQ }
+
+type byTillID []*checkout
+
+func (a byTillID) Len() int           { return len(a) }
+func (a byTillID) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byTillID) Less(i, j int) bool { return a[i].id < a[j].id }
+
+type byScanTime []*operator
+
+func (a byScanTime) Len() int           { return len(a) }
+func (a byScanTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byScanTime) Less(i, j int) bool { return int(a[i].scanTime) < int(a[j].scanTime) }
+
 //RECEIVER FUNCTIONS
 func (cust *customer) joinQue(tills []*checkout, items int) bool {
 
