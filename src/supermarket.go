@@ -4,8 +4,14 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
+
+	"fyne.io/fyne"
+	"fyne.io/fyne/app"
+	"fyne.io/fyne/layout"
+	"fyne.io/fyne/widget"
 )
 
 //STRUCTS
@@ -128,17 +134,16 @@ func (op *operator) scan(cust *customer) {
 const maxItem = 2147483647
 
 var scale int64 = 1000
-var numCheckouts = 8
-var checkoutsOpen = 8
-var numOperators = 8
-var numCusts = 100
+var numCheckouts int
+var checkoutsOpen int
+var numOperators int
+var numCusts int
 var custsLost = 0
-var minItems = 1
-var maxItems = 90
-var minPatience = 0
-var maxPatience = 1
-var maxQueueLength = 6
+var minItems int
+var maxItems int
+var maxQueueLength int
 var smartCusts = false
+var smartManager = false
 var minScanTime time.Duration = 5 * time.Microsecond * 1000
 var maxScanTime time.Duration = 60 * time.Microsecond * 1000
 var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
@@ -156,7 +161,88 @@ var mrManager manager
 
 var wg = &sync.WaitGroup{}
 
+func gui() {
+	app := app.New()
+	window := app.NewWindow("Supermarket simulator")
+
+	label01 := widget.NewLabel("Number of Checkouts:")
+	label02 := widget.NewLabel("Checkouts open:")
+	label03 := widget.NewLabel("Number of Checkout operartors:")
+	label04 := widget.NewLabel("Number of customers:")
+	label05 := widget.NewLabel("Minimum items:")
+	label06 := widget.NewLabel("Maximum items:")
+	label07 := widget.NewLabel("Max Queue Length:")
+
+	labelfiller := widget.NewLabel("")
+	entry01 := widget.NewEntry()
+	entry02 := widget.NewEntry()
+	entry03 := widget.NewEntry()
+	entry04 := widget.NewEntry()
+	entry05 := widget.NewEntry()
+	entry06 := widget.NewEntry()
+	entry07 := widget.NewEntry()
+
+	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
+		smartManager = value
+
+	})
+	checkbox02 := widget.NewCheck("Smart Customer", func(value bool) {
+		smartCusts = value
+	})
+	button01 := widget.NewButton("Begin simulation", func() {
+		fmt.Println("Inside gui(): ")
+		numCheckouts, _ = strconv.Atoi(entry01.Text)
+		fmt.Println(strconv.Itoa(numCheckouts))
+		checkoutsOpen, _ = strconv.Atoi(entry02.Text)
+		fmt.Println(strconv.Itoa(checkoutsOpen))
+		numOperators, _ = strconv.Atoi(entry03.Text)
+		fmt.Println(strconv.Itoa(numOperators))
+		numCusts, _ = strconv.Atoi(entry04.Text)
+		fmt.Println(strconv.Itoa(numCusts))
+		minItems, _ = strconv.Atoi(entry05.Text)
+		fmt.Println(strconv.Itoa(minItems))
+		maxItems, _ = strconv.Atoi(entry06.Text)
+		fmt.Println(strconv.Itoa(maxItems))
+		maxQueueLength, _ = strconv.Atoi(entry07.Text)
+		fmt.Println(strconv.Itoa(maxQueueLength))
+		window.Close()
+	})
+	content := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
+		label01,
+		entry01,
+		label02,
+		entry02,
+		label03,
+		entry03,
+		label04,
+		entry04,
+		label05,
+		entry05,
+		label06,
+		entry06,
+		label07,
+		entry07,
+		checkbox01,
+		checkbox02,
+		button01,
+		labelfiller,
+	)
+
+	window.SetContent(content)
+	//window.Resize(fyne.NewSize(380, 320))
+	window.ShowAndRun()
+}
 func main() {
+
+	gui()
+	fmt.Println("Outside gui(): ")
+	fmt.Println(strconv.Itoa(numCheckouts))
+	fmt.Println(strconv.Itoa(checkoutsOpen))
+	fmt.Println(strconv.Itoa(numOperators))
+	fmt.Println(strconv.Itoa(numCusts))
+	fmt.Println(strconv.Itoa(minItems))
+	fmt.Println(strconv.Itoa(maxItems))
+	fmt.Println(strconv.Itoa(maxQueueLength))
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -165,7 +251,7 @@ func main() {
 	mrManager.name = "Mr. Manager"
 	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen / 2))
 	mrManager.itemLimit = 5
-	mrManager.isSmart = true
+	mrManager.isSmart = smartManager
 	mrManager.isQuikCheck = true
 
 	//checkout setup
