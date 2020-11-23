@@ -8,10 +8,9 @@ import (
 	"time"
 )
 
-//STUCTS
+//STRUCTS
 type customer struct {
 	items       int
-	tillJoined  int
 	enterQAt    time.Time
 	patience    time.Duration
 	timeAtTill  time.Duration
@@ -43,6 +42,7 @@ type checkout struct {
 	itemLimit          int
 	customersServed    int
 	customersLost      int
+	itemsProcessed     int
 	startTime          time.Time
 	endTime            time.Time
 	open               bool
@@ -52,6 +52,9 @@ type checkout struct {
 	percentTimeWorking float32
 	timePerCust        float32
 	numInQ			   int32
+}
+type manager struct {
+	restrictedTills []*checkout
 }
 
 type byQLength []*checkout
@@ -108,7 +111,7 @@ func (till *queue) moveAlong() {
 
 func (cust *customer) checkPatience() bool {
 	timeWaited := time.Since(cust.enterQAt)
-	if timeWaited > (cust.patience) { //need to address the int issue here
+	if timeWaited > (cust.patience) {
 		return false
 	}
 	return true
@@ -144,6 +147,9 @@ var smartCusts = false
 var minScanTime time.Duration = 5 * time.Microsecond * 1000
 var maxScanTime time.Duration = 60 * time.Microsecond * 1000
 var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
+var totalItemsProcessed = 0
+var averageItemsPerTrolley = 0
+
 var spawner = time.NewTicker(custArrivalRate)
 var tick = time.NewTicker(custArrivalRate / 10)
 
@@ -152,6 +158,8 @@ var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
 var mrManager manager
+
+
 
 
 var wg = &sync.WaitGroup{}
@@ -210,7 +218,7 @@ func main() {
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, time.Now(), 0, 0, time.Second}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), time.Now(), 0, 0, time.Second}
 	}
 
 	//process customers at tills.
@@ -243,9 +251,7 @@ func main() {
 						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
-						//fmt.Println("Currently", check.numInQ, "in queue", check.id)
-
-			
+						//fmt.Println("Currently", check.numInQ, "in queue", check.id)			
 					}
 				}
 			}(till, wg)
@@ -293,7 +299,9 @@ SpawnLoop:
 	}
 	for _, till := range tills {
 		totalCusts += till.customersServed
+
 		fmt.Println("\nTILL", till.id, "")
+    totalItemsProcessed += till.itemsProcessed
 		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
 		fmt.Println("  Max Item Limit:", till.itemLimit)
 		fmt.Println("  Customers Served:", till.customersServed)
@@ -304,4 +312,6 @@ SpawnLoop:
 	fmt.Println("\nTotal Customers Served:", totalCusts)
 	fmt.Println("\nTotal Customers Lost  :", custsLost)
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
+	fmt.Println("Total Items Processed:", totalItemsProcessed)
+	fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCusts)))
 }
