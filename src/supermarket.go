@@ -5,6 +5,7 @@ import (
 	"sort"
 	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -29,7 +30,7 @@ type queue struct {
 
 type manager struct {
 	name 			string
-	quikCheckRate	int
+	cappedCheckRate	int
 	itemLimit		int
 	isSmart			bool
 	isQuikCheck		bool
@@ -51,7 +52,7 @@ type checkout struct {
 	percentTotalCusts  float32
 	percentTimeWorking float32
 	timePerCust        float32
-	numInQ			   int
+	numInQ			   int32
 }
 
 type byQLength []*checkout
@@ -140,7 +141,7 @@ var maxItems = 90
 var minPatience = 0
 var maxPatience = 1
 var maxQueueLength = 6
-var smartCusts = true
+var smartCusts = false
 var minScanTime time.Duration = 5 * time.Microsecond * 1000
 var maxScanTime time.Duration = 60 * time.Microsecond * 1000
 var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
@@ -163,7 +164,7 @@ func main() {
 	//This seems like an appropriate place for the time mark,
 	//like when the manager first opens the door to the market at the start of the day.
 	mrManager.name = "Mr. Manager"
-	mrManager.quikCheckRate = 2//rand.Intn(int(checkoutsOpen/2))
+	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen/2))
 	mrManager.itemLimit = 5
 	mrManager.isSmart = true
 	mrManager.isQuikCheck = true
@@ -178,7 +179,7 @@ func main() {
 		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait,
 		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
-			if i < mrManager.quikCheckRate {
+			if i < mrManager.cappedCheckRate {
 				tills[i] = &checkout{nil, &queue{q}, i + 1, mrManager.itemLimit, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
 			} else {
 				tills[i] = &checkout{nil, &queue{q}, i + 1, maxItem, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
@@ -230,9 +231,13 @@ func main() {
 						if !ok {
 							break Spin
 						}
-						//check.numInQ-- //look into atomic
-						check.operator.scan(c)
 
+
+
+						check.numInQ--
+						//Keep this in mind ^^^
+
+						check.operator.scan(c)
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
@@ -283,9 +288,9 @@ SpawnLoop:
 	fmt.Println()
 	totalCusts := 0
 
-	fmt.Println("Manager Name:", mrManager.name,"\nItem Limit:", mrManager.itemLimit,"\nIs smart?:", mrManager.isSmart,"\nItem Limited Checkouts?:", mrManager.isQuikCheck,"\nQuikCheckChance:", mrManager.quikCheckRate)
+	fmt.Println("Manager Name:", mrManager.name,"\nItem Limit:", mrManager.itemLimit,"\nIs smart?:", mrManager.isSmart,"\nItem Limited Checkouts?:", mrManager.isQuikCheck,"\nQuikCheckChance:", mrManager.cappedCheckRate)
 
-	//sort.Sort(byTillID(tills))
+	sort.Sort(byTillID(tills))
 	for _, till := range tills {
 		totalCusts += till.customersServed
 		fmt.Println("\nTILL", till.id, "")
