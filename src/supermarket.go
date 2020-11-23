@@ -43,9 +43,7 @@ type checkout struct {
 	percentTimeWorking float32
 	timePerCust        float32
 }
-type manager struct {
-	restrictedTills []*checkout
-}
+
 
 //RECEIVER FUNCTIONS
 func (cust *customer) joinQue(tills []*checkout) bool {
