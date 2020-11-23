@@ -142,8 +142,8 @@ var custsLost = 0
 var minItems int
 var maxItems int
 var maxQueueLength int
-var smartCusts = false
-var smartManager = false
+var smartCusts bool
+var smartManager bool
 var minScanTime time.Duration = 5 * time.Microsecond * 1000
 var maxScanTime time.Duration = 60 * time.Microsecond * 1000
 var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
@@ -235,14 +235,7 @@ func gui() {
 func main() {
 
 	gui()
-	fmt.Println("Outside gui(): ")
-	fmt.Println(strconv.Itoa(numCheckouts))
-	fmt.Println(strconv.Itoa(checkoutsOpen))
-	fmt.Println(strconv.Itoa(numOperators))
-	fmt.Println(strconv.Itoa(numCusts))
-	fmt.Println(strconv.Itoa(minItems))
-	fmt.Println(strconv.Itoa(maxItems))
-	fmt.Println(strconv.Itoa(maxQueueLength))
+
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -387,4 +380,12 @@ SpawnLoop:
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 	fmt.Println("Total Items Processed:", totalItemsProcessed)
 	fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCusts)))
+	fmt.Println("Outside gui(): ")
+	fmt.Println(strconv.Itoa(numCheckouts))
+	fmt.Println(strconv.Itoa(checkoutsOpen))
+	fmt.Println(strconv.Itoa(numOperators))
+	fmt.Println(strconv.Itoa(numCusts))
+	fmt.Println(strconv.Itoa(minItems))
+	fmt.Println(strconv.Itoa(maxItems))
+	fmt.Println(strconv.Itoa(maxQueueLength))
 }
