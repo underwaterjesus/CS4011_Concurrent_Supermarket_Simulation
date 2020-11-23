@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"math"
+	"sort"
 	"math/rand"
 	"sync"
 	"time"
@@ -19,17 +19,27 @@ type customer struct {
 }
 
 type operator struct {
-	minScanTime time.Duration
-	maxScanTime time.Duration
+	scanTime time.Duration
+	
 }
 
 type queue struct {
 	customers chan *customer
 }
 
+type manager struct {
+	name 			string
+	quikCheckRate	int
+	itemLimit		int
+	isSmart			bool
+	isQuikCheck		bool
+	
+}
+
 type checkout struct {
 	operator           *operator
 	queue              *queue
+	queuePool		   *queue
 	id                 int
 	itemLimit          int
 	customersServed    int
@@ -51,16 +61,35 @@ func (a byQLength) Len() int           { return len(a) }
 func (a byQLength) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byQLength) Less(i, j int) bool { return a[i].numInQ < a[j].numInQ }
 
+type byTillID []*checkout
+
+func (a byTillID) Len() int           { return len(a) }
+func (a byTillID) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byTillID) Less(i, j int) bool { return a[i].id < a[j].id }
+
+type byScanTime []*operator
+
+func (a byScanTime) Len() int           { return len(a) }
+func (a byScanTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byScanTime) Less(i, j int) bool { return int(a[i].scanTime) < int(a[j].scanTime) }
+
 //RECEIVER FUNCTIONS
-func (cust *customer) joinQue(tills []*checkout) bool {
-	//sort.Sort(byQLength(tills))
+func (cust *customer) joinQue(tills []*checkout, items int) bool {
+
+	if(smartCusts){
+		mutex.Lock()
+		sort.Sort(byQLength(tills))
+		mutex.Unlock()
+	}
+	
 	for _, till := range tills {
-		if till.open && till.operator != nil {
+		if till.open && till.operator != nil && items < till.itemLimit {
 			select {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
-				till.numInQ++
+				till.numInQ++			
 				return true
+
 			default:
 				continue
 			}
@@ -68,6 +97,10 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 	}
 
 	return false
+}
+
+func (manager *manager) sortOperators() {
+	sort.Sort(byScanTime(ops))
 }
 
 func (till *queue) moveAlong() {
@@ -82,12 +115,13 @@ func (cust *customer) checkPatience() bool {
 	return true
 }
 
+
 func (op *operator) scan(cust *customer) {
 	n := cust.items
 	cust.timeInQueue = time.Since(cust.enterQAt)
 	start := time.Now()
 	for i := 0; i < n; i++ {
-		r := rand.Intn(int(op.maxScanTime-op.minScanTime)) + int(op.minScanTime+1)
+		r := op.scanTime
 		time.Sleep(time.Duration(r))
 	}
 	cust.timeAtTill = time.Since(start)
@@ -95,32 +129,33 @@ func (op *operator) scan(cust *customer) {
 
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
-var scale int64 = 10000
-var numCheckouts = 5
-var checkoutsOpen = 5
-var numOperators = 5
+const maxItem = 2147483647
+var scale int64 = 1000
+var numCheckouts = 8
+var checkoutsOpen = 8
+var numOperators = 8
 var numCusts = 100
 var custsLost = 0
 var minItems = 1
-var maxItems = 15
+var maxItems = 90
 var minPatience = 0
 var maxPatience = 1
 var maxQueueLength = 6
-var minScanTime time.Duration = 500 * time.Microsecond * 100
-var maxScanTime time.Duration = 1000 * time.Microsecond * 100
-var custArrivalRate time.Duration = 300 * time.Microsecond * 100 //5mins scaled secs->microsecs
+var smartCusts = true
+var minScanTime time.Duration = 5 * time.Microsecond * 1000
+var maxScanTime time.Duration = 60 * time.Microsecond * 1000
+var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
 var spawner = time.NewTicker(custArrivalRate)
 var tick = time.NewTicker(custArrivalRate / 10)
 
+var mutex = &sync.Mutex{}
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
+var mrManager manager
+
 
 var wg = &sync.WaitGroup{}
-
-type manager struct {
-	staff []*operator
-}
 
 func main() {
 	//SETUP
@@ -128,24 +163,38 @@ func main() {
 
 	//This seems like an appropriate place for the time mark,
 	//like when the manager first opens the door to the market at the start of the day.
-	simStart := time.Now()
+	mrManager.name = "Mr. Manager"
+	mrManager.quikCheckRate = 2//rand.Intn(int(checkoutsOpen/2))
+	mrManager.itemLimit = 5
+	mrManager.isSmart = true
+	mrManager.isQuikCheck = true
+	
+	
+	
 
 	//checkout setup
 	for i := range tills {
 		q := make(chan *customer, maxQueueLength)
 
-		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait,
+		//checkout(operator, queue, queuePool id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait,
 		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+			if i < mrManager.quikCheckRate {
+				tills[i] = &checkout{nil, &queue{q}, &queue{q}, i + 1, mrManager.itemLimit, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+			} else {
+				tills[i] = &checkout{nil, &queue{q}, &queue{q}, i + 1, maxItem, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+			}
 		} else {
-			tills[i] = &checkout{nil, &queue{q}, i + 1, math.MaxInt32, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0, 0}
+
+			tills[i] = &checkout{nil, &queue{q}, &queue{q}, i + 1, maxItem, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+			
 		}
+		
 	}
 
 	//checkout operator setup
 	for i := range ops {
-		ops[i] = &operator{minScanTime, maxScanTime}
+		ops[i] = &operator{ time.Duration(rand.Intn(int(maxScanTime - minScanTime) + int(minScanTime+1)) ) }
 
 		if i < numCheckouts {
 			if tills[i].open {
@@ -154,6 +203,9 @@ func main() {
 			}
 		}
 	}
+
+	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
+	mrManager.sortOperators()
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
@@ -177,7 +229,7 @@ func main() {
 						if !ok {
 							break Spin
 						}
-						check.numInQ--
+						//check.numInQ-- //look into atomic
 						check.operator.scan(c)
 
 						check.totalQueueWait += c.timeInQueue
@@ -188,8 +240,7 @@ func main() {
 						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
 						//fmt.Println("Currently", check.numInQ, "in queue", check.id)
 
-					default:
-						continue
+			
 					}
 				}
 			}(till, wg)
@@ -198,6 +249,7 @@ func main() {
 	}
 
 	//does not need to be goroutine atm, but probably will later
+	simStart := time.Now()
 SpawnLoop:
 	for {
 		select {
@@ -207,7 +259,7 @@ SpawnLoop:
 				if !ok {
 					break SpawnLoop
 				}
-				if !c.joinQue(tills) {
+				if !c.joinQue(tills, c.items) {
 					custsLost++
 					//fmt.Println("A customer left")
 				}
@@ -225,15 +277,19 @@ SpawnLoop:
 	for _, till := range tills {
 		close(till.queue.customers)
 	}
-
 	wg.Wait()
 	simRunTime := time.Since(simStart)
 	fmt.Println()
 	totalCusts := 0
+
+	fmt.Println("Manager Name:", mrManager.name,"\nItem Limit:", mrManager.itemLimit,"\nIs smart?:", mrManager.isSmart,"\nItem Limited Checkouts?:", mrManager.isQuikCheck,"\nQuikCheckChance:", mrManager.quikCheckRate)
+
+	//sort.Sort(byTillID(tills))
 	for _, till := range tills {
 		totalCusts += till.customersServed
 		fmt.Println("\nTILL", till.id, "")
 		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
+		fmt.Println("  Max Item Limit:", till.itemLimit)
 		fmt.Println("  Customers Served:", till.customersServed)
 		fmt.Println("  Total time waited by customers in queue:", till.totalQueueWait.Truncate(time.Second))
 		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second))
