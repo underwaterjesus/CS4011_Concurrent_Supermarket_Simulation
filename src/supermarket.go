@@ -154,9 +154,9 @@ var spawner = time.NewTicker(custArrivalRate)
 var tick = time.NewTicker(custArrivalRate / 10)
 
 var mutex = &sync.Mutex{}
-var tills = make([]*checkout, numCheckouts)
-var ops = make([]*operator, numOperators)
-var custs = make(chan *customer, numCusts)
+var tills []*checkout
+var ops []*operator
+var custs chan *customer
 var mrManager manager
 
 var wg = &sync.WaitGroup{}
@@ -190,21 +190,13 @@ func gui() {
 		smartCusts = value
 	})
 	button01 := widget.NewButton("Begin simulation", func() {
-		fmt.Println("Inside gui(): ")
 		numCheckouts, _ = strconv.Atoi(entry01.Text)
-		fmt.Println(strconv.Itoa(numCheckouts))
 		checkoutsOpen, _ = strconv.Atoi(entry02.Text)
-		fmt.Println(strconv.Itoa(checkoutsOpen))
 		numOperators, _ = strconv.Atoi(entry03.Text)
-		fmt.Println(strconv.Itoa(numOperators))
 		numCusts, _ = strconv.Atoi(entry04.Text)
-		fmt.Println(strconv.Itoa(numCusts))
 		minItems, _ = strconv.Atoi(entry05.Text)
-		fmt.Println(strconv.Itoa(minItems))
 		maxItems, _ = strconv.Atoi(entry06.Text)
-		fmt.Println(strconv.Itoa(maxItems))
 		maxQueueLength, _ = strconv.Atoi(entry07.Text)
-		fmt.Println(strconv.Itoa(maxQueueLength))
 		window.Close()
 	})
 	content := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
@@ -236,6 +228,9 @@ func main() {
 
 	gui()
 
+	tills = make([]*checkout, numCheckouts)
+	ops = make([]*operator, numOperators)
+	custs = make(chan *customer, numCusts)
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -314,6 +309,7 @@ func main() {
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
+						check.itemsProcessed += c.items
 						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
@@ -380,12 +376,16 @@ SpawnLoop:
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 	fmt.Println("Total Items Processed:", totalItemsProcessed)
 	fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCusts)))
-	fmt.Println("Outside gui(): ")
-	fmt.Println(strconv.Itoa(numCheckouts))
-	fmt.Println(strconv.Itoa(checkoutsOpen))
-	fmt.Println(strconv.Itoa(numOperators))
-	fmt.Println(strconv.Itoa(numCusts))
-	fmt.Println(strconv.Itoa(minItems))
-	fmt.Println(strconv.Itoa(maxItems))
-	fmt.Println(strconv.Itoa(maxQueueLength))
+
+	// app := app.New()
+	// window2 := app.NewWindow("Supermarket simulator results")
+
+	// label08 := widget.NewLabel("Total Customers Served:" + strconv.Itoa(totalCusts))
+	// label09 := widget.NewLabel("Total Customers lost:" + strconv.Itoa(totalCusts))
+	// //label10 := widget.NewLabel("Sim run time:" + strconv.Itoa(simRunTime.Truncate(time.Second)))
+	// label11 := widget.NewLabel("Total Items:" + strconv.Itoa(totalItemsProcessed))
+	// content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
+	// 	label08, label09, label11)
+	// window2.SetContent(content2)
+	// window2.ShowAndRun()
 }
