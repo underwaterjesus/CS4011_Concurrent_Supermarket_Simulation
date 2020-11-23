@@ -5,7 +5,6 @@ import (
 	"sort"
 	"math/rand"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
