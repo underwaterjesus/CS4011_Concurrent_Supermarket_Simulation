@@ -188,20 +188,20 @@ func main() {
 
 	}
 
+	//checkout operator setup
+	for i := range ops {
+		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime) + int(minScanTime+1)))}
+	}
+
 	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
 	if mrManager.isSmart {
 		mrManager.sortOperators()
 	}
 
-	//checkout operator setup
-	for i := range ops {
-		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime) + int(minScanTime+1)))}
-
-		if i < numCheckouts {
-			if tills[i].open {
-				tills[i].operator = ops[i]
-				wg.Add(1)
-			}
+	for i := 0; i < numCheckouts; i++ {
+		if tills[i].open {
+			tills[i].operator = ops[i]
+			wg.Add(1)
 		}
 	}
 
