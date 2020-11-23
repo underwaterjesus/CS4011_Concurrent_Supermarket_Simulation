@@ -148,7 +148,7 @@ func main() {
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), 3, time.Now(), 0, 0, time.Second}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), time.Now(), 0, 0, time.Second}
 	}
 
 	//process customers at tills.
@@ -235,5 +235,5 @@ SpawnLoop:
 	fmt.Println("\nTotal Customers Lost  :", custsLost)
 	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 	fmt.Println("Total Items Processed:", totalItemsProcessed)
-	fmt.Println("Mean Average Item per customer", (totalItemsProcessed / totalCusts))
+	fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCusts)))
 }
