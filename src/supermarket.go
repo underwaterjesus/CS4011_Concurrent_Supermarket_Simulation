@@ -204,7 +204,9 @@ func main() {
 	}
 
 	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
-	mrManager.sortOperators()
+	if(mrManager.isSmart){
+		mrManager.sortOperators()
+	}
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
