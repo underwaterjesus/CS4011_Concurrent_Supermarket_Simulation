@@ -53,9 +53,7 @@ type checkout struct {
 	timePerCust        float32
 	numInQ			   int32
 }
-type manager struct {
-	restrictedTills []*checkout
-}
+
 
 type byQLength []*checkout
 
@@ -183,17 +181,17 @@ func main() {
 	for i := range tills {
 		q := make(chan *customer, maxQueueLength)
 
-		//checkout(operator, queue, id, itemLimit, customersServed, startTime, endTime, open, totalQueueWait,
+		//checkout(operator, queue, id, itemLimit, customersServed, customersLost startTime, endTime, open, totalQueueWait,
 		//		   totalScanTime, percentTotalCusts, percentTimeWorking, timePerCust)
 		if i < checkoutsOpen {
 			if i < mrManager.cappedCheckRate {
-				tills[i] = &checkout{nil, &queue{q}, i + 1, mrManager.itemLimit, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+				tills[i] = &checkout{nil, &queue{q}, i + 1, mrManager.itemLimit, 0, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
 			} else {
-				tills[i] = &checkout{nil, &queue{q}, i + 1, maxItem, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+				tills[i] = &checkout{nil, &queue{q}, i + 1, maxItem, 0, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
 			}
 		} else {
 
-			tills[i] = &checkout{nil, &queue{q}, i + 1, maxItem, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, maxItem, 0, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
 			
 		}
 		
