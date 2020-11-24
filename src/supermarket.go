@@ -439,7 +439,7 @@ func runSim() int {
 						check.totalScanTime += c.timeAtTill
 						check.itemsProcessed += c.items
 						check.customersServed++
-						check.itemsProcessed += c.items
+						
 					}
 				}
 			}(till, wg)
