@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -89,7 +90,11 @@ func (cust *customer) joinQue(tills []*checkout, items int) bool {
 			select {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
-				till.numInQ++
+
+				if smartCusts {
+					atomic.AddInt32(&till.numInQ, 1)
+				}
+
 				return true
 
 			default:
@@ -183,7 +188,6 @@ func main() {
 
 	//Modify the customer arrival rate based on the weather
 	custArrivalRate = time.Duration(float64(custArrivalRate) * float64(weatherScale[setWeather]))
-	fmt.Println(custArrivalRate)
 
 	//checkout setup
 	for i := range tills {
@@ -245,8 +249,7 @@ func main() {
 							break Spin
 						}
 
-						check.numInQ--
-						//Keep this in mind ^^^
+						atomic.AddInt32(&check.numInQ, -1)
 
 						check.operator.scan(c)
 						check.totalQueueWait += c.timeInQueue
@@ -254,10 +257,6 @@ func main() {
 						check.itemsProcessed += c.items
 						check.customersServed++
 						check.itemsProcessed += c.items
-						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
-						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
-						//fmt.Println("Currently", check.numInQ, "in queue", check.id)
 					}
 				}
 			}(till, wg)
@@ -318,7 +317,7 @@ SpawnLoop:
 	fmt.Println("\nINDIVIDUAL TILLS:")
 
 	for _, till := range tills {
-		fmt.Println("\nTILL", till.id, "")
+		fmt.Printf("\nTILL %d:\n", till.id)
 		if !till.open {
 			fmt.Println("TILL CLOSED")
 			continue
@@ -359,18 +358,6 @@ SpawnLoop:
 		fmt.Printf(" Utilization                            : %.2f%%\n", utilization)
 		fmt.Println(" Mean Customer Wait Time                :", meanWait)
 		fmt.Println(" Total time waited by customers in queue:", (till.totalQueueWait * 1_000).Truncate(time.Second))
-
-		//if till.totalQueueWait > 0*time.Nanosecond {
-		//	fmt.Println("  Total time waited by customers in queue:", (till.totalQueueWait * 1_000).Truncate(time.Second))
-		//} else {
-		//	fmt.Println("  Total time waited by customers in queue: 0")
-		//}
-
-		//if till.totalQueueWait > 0*time.Nanosecond {
-		//	fmt.Println("  Total time scanning:", (till.totalScanTime * 1_000).Truncate(time.Second))
-		//} else {
-		//	fmt.Println("  Total time Scanning: 0")
-		//}
 	}
 
 	divisor := checkoutsOpen
