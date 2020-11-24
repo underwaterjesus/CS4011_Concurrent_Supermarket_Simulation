@@ -77,7 +77,7 @@ func (a byScanTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byScanTime) Less(i, j int) bool { return int(a[i].scanTime) < int(a[j].scanTime) }
 
 //RECEIVER FUNCTIONS
-func (cust *customer) joinQue(tills []*checkout, items int) bool {
+func (cust *customer) joinQue(tills []*checkout) bool {
 
 	if smartCusts {
 		mutex.Lock()
@@ -86,7 +86,7 @@ func (cust *customer) joinQue(tills []*checkout, items int) bool {
 	}
 
 	for _, till := range tills {
-		if till.open && till.operator != nil && items < till.itemLimit {
+		if till.open && till.operator != nil && cust.items < till.itemLimit {
 			select {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
@@ -228,7 +228,7 @@ func main() {
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), time.Now(), 0, 0, time.Second}
+		custs <- &customer{(rand.Intn((maxItems-minItems)+1) + minItems), time.Now(), 0, 0, time.Second}
 	}
 
 	//process customers at tills.
@@ -256,7 +256,6 @@ func main() {
 						check.totalScanTime += c.timeAtTill
 						check.itemsProcessed += c.items
 						check.customersServed++
-						check.itemsProcessed += c.items
 					}
 				}
 			}(till, wg)
@@ -275,7 +274,7 @@ SpawnLoop:
 				if !ok {
 					break SpawnLoop
 				}
-				if !c.joinQue(tills, c.items) {
+				if !c.joinQue(tills) {
 					custsLost++
 					//fmt.Println("A customer left")
 				}
