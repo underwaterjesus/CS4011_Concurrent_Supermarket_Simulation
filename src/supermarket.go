@@ -168,11 +168,11 @@ func gui() {
 	app := app.New()
 	window := app.NewWindow("Supermarket Simulator Param Input")
 	label01 := widget.NewLabel("Number of Checkouts:")
-	label02 := widget.NewLabel("Checkouts open:")
-	label03 := widget.NewLabel("Number of Checkout operartors:")
-	label04 := widget.NewLabel("Number of customers:")
-	label05 := widget.NewLabel("Minimum items:")
-	label06 := widget.NewLabel("Maximum items:")
+	label02 := widget.NewLabel("Checkouts Open:")
+	label03 := widget.NewLabel("Number of Checkout Operartors:")
+	label04 := widget.NewLabel("Number of Customers:")
+	label05 := widget.NewLabel("Minimum Items:")
+	label06 := widget.NewLabel("Maximum Items:")
 	label07 := widget.NewLabel("Max Queue Length:")
 
 	labelfiller01 := widget.NewLabel("")
@@ -207,43 +207,46 @@ func gui() {
 
 		if runSim() == 1 {
 
-			output := ""
-			fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
 			if smartCusts {
 				sort.Sort(byTillID(tills))
 			}
 
-			
-			label08 := widget.NewLabel("Output")
-
+			outputText := ""
+			outputLabel := widget.NewLabel("Output")
 			avgItem := 0.0
+			itmLmt := "none"
 			for _, till := range tills {
+				if(till.itemLimit<maxItem){
+					itmLmt = "Yes - " + strconv.Itoa(till.itemLimit)
+				}
 				totalCustsServed += till.customersServed
 				totalItemsProcessed += till.itemsProcessed
-				
-	
-				output += "\n\nTILL " +  strconv.Itoa(till.id) + ""
-
-				output += "\n  Time Open: " + till.endTime.Sub(till.startTime).Truncate(time.Second).String()
-				output += "\n  Max Item Limit: " + strconv.Itoa(till.itemLimit)
-				output += "\n  Customers Served: " + strconv.Itoa(till.customersServed)
-				output += "\n  Total time waited by customers in queue: " + till.totalQueueWait.Truncate(time.Second).String()
-				output += "\n  Total time scanning: " + till.totalScanTime.Truncate(time.Second).String()
-
-				
-
+		
+				outputText += "\n\nTILL " +  strconv.Itoa(till.id) + ""
+				outputText += "\n  Time Open: " + till.endTime.Sub(till.startTime).Truncate(time.Second).String()
+				outputText += "\n  Max Item Limit: " + itmLmt
+				outputText += "\n  Customers Served: " + strconv.Itoa(till.customersServed)
+				outputText += "\n  Total time waited by customers in queue: " + till.totalQueueWait.Truncate(time.Second).String()
+				outputText += "\n  Total time scanning: " + till.totalScanTime.Truncate(time.Second).String()
 			}
 
 			avgItem = (float64(totalItemsProcessed) / float64(totalCustsServed))
-			output += "\n\nTotal Customers Served: " + strconv.Itoa(totalCustsServed)
-			output += "\nTotal Customers Lost: " +  strconv.Itoa(custsLost)
-			output += "\n\nSim RunTime: " + simRunTime.Truncate(time.Second).String()
-			output += "\n\nTotal Items Processed: " + strconv.Itoa(totalItemsProcessed)
-			output += "\n\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'f', 2, 32)
-
+			outputText += "\n\n---------------------------------------------------"
+			outputText += "\n\nTotal Customers Served: " + strconv.Itoa(totalCustsServed)
+			outputText += "\nTotal Customers Lost: " +  strconv.Itoa(custsLost)
+			outputText += "\n\nTotal Items Processed: " + strconv.Itoa(totalItemsProcessed)
+			outputText += "\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'f', 2, 32)
+			outputText += "\n\nSim RunTime: " + simRunTime.Truncate(time.Second).String()
 			
-			label08.SetText(output)
-			cd1 := widget.NewCard("Output Info", "", label08)
+			
+
+			outputText += "\n\nManager Name: " + mrManager.name 
+			outputText += "\nItem Limit: " + strconv.Itoa(mrManager.itemLimit) 
+			
+			
+			
+			outputLabel.SetText(outputText)
+			cd1 := widget.NewCard("Output Info", "", outputLabel)
 			scrllCont := widget.NewScrollContainer(cd1)
 			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
 
