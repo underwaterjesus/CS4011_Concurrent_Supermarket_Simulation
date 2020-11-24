@@ -127,6 +127,7 @@ func (op *operator) scan(cust *customer) {
 		time.Sleep(op.scanTime)
 	}
 	cust.timeAtTill = time.Since(start)
+	servedCusts <- cust
 }
 
 //GLOBALS
@@ -160,6 +161,7 @@ var mutex = &sync.Mutex{}
 var tills []*checkout
 var ops []*operator
 var custs chan *customer
+var servedCusts chan *customer
 var mrManager manager
 
 var wg = &sync.WaitGroup{}
@@ -302,6 +304,20 @@ func postProcesses() string {
 
 	output += fmt.Sprintf("\n\nSim RunTime: %s", simRunTime.String())
 
+	servedCustsArr := make([]*customer, totalCusts)
+	idx := 0
+	for i := range servedCusts {
+		servedCustsArr[idx] = i
+		idx++
+	}
+
+	for j, cust := range servedCustsArr {
+		output += fmt.Sprintf("\n\nCustomer %d:\n", j+1)
+		output += fmt.Sprintf(" Items in Trolley: %d\n", cust.items)
+		output += fmt.Sprintf(" Time in Queue   : %s\n", (cust.timeInQueue * 1_000).Truncate(time.Second).String())
+		output += fmt.Sprintf(" Time at Till    : %s\n", (cust.timeAtTill * 1_000).Truncate(time.Second).String())
+	}
+
 	return output
 }
 
@@ -310,6 +326,7 @@ func runSim() int {
 	tills = make([]*checkout, numCheckouts)
 	ops = make([]*operator, numOperators)
 	custs = make(chan *customer, numCusts)
+	servedCusts = make(chan *customer, numCusts)
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 
@@ -425,6 +442,7 @@ SpawnLoop:
 	}
 	wg.Wait()
 	simRunTime = time.Since(simStart)
+	close(servedCusts)
 	fmt.Println()
 	totalCustsServed = 0
 
