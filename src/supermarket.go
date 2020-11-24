@@ -175,7 +175,11 @@ func gui() {
 	label06 := widget.NewLabel("Maximum items:")
 	label07 := widget.NewLabel("Max Queue Length:")
 
-	labelfiller := widget.NewLabel("")
+	labelfiller01 := widget.NewLabel("")
+	labelfiller02 := widget.NewLabel("")
+	labelfiller03 := widget.NewLabel("")
+	labelfiller04 := widget.NewLabel("")
+	labelfiller05 := widget.NewLabel("")
 	entry01 := widget.NewEntry()
 	entry02 := widget.NewEntry()
 	entry03 := widget.NewEntry()
@@ -192,7 +196,6 @@ func gui() {
 		smartCusts = value
 	})
 
-
 	button01 := widget.NewButton("Begin simulation", func() {
 		numCheckouts, _ = strconv.Atoi(entry01.Text)
 		checkoutsOpen, _ = strconv.Atoi(entry02.Text)
@@ -201,8 +204,6 @@ func gui() {
 		minItems, _ = strconv.Atoi(entry05.Text)
 		maxItems, _ = strconv.Atoi(entry06.Text)
 		maxQueueLength, _ = strconv.Atoi(entry07.Text)
-
-
 
 		if runSim() == 1 {
 
@@ -213,76 +214,58 @@ func gui() {
 			}
 			for _, till := range tills {
 				totalCustsServed += till.customersServed
-		
-				output += "\nTILL " +  strconv.Itoa(till.id) + ""
+
+				output += "\nTILL " + strconv.Itoa(till.id) + ""
 				totalItemsProcessed += till.itemsProcessed
 				output += "\n  Time Open: " + till.endTime.Sub(till.startTime).Truncate(time.Second).String()
 				output += "\n  Max Item Limit: " + strconv.Itoa(till.itemLimit)
 				output += "\n  Customers Served: " + strconv.Itoa(till.customersServed)
-				output += "\n  Total time waited by customers in queue: " +till.totalQueueWait.Truncate(time.Second).String()
+				output += "\n  Total time waited by customers in queue: " + till.totalQueueWait.Truncate(time.Second).String()
 				output += "\n  Total time scanning: " + till.totalScanTime.Truncate(time.Second).String()
 			}
-		
+
 			fmt.Println("\nTotal Customers Served:", totalCustsServed)
 			fmt.Println("\nTotal Customers Lost  :", custsLost)
 			fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
 			fmt.Println("Total Items Processed:", totalItemsProcessed)
 			fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCustsServed)))
 
+			output += "\n\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
 
-
-
-
-
-
-
-
-
-
-			output +="\n\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
-			
 			label08 := widget.NewLabel(output)
 
 			button02 := widget.NewButton("Close", func() {
 				window.Close()
 			})
-		
-			content2 := fyne.NewContainerWithLayout(layout.NewMaxLayout(), label08, button02,)
+
+			content2 := fyne.NewContainerWithLayout(layout.NewMaxLayout(), label08, button02)
 
 			window.SetContent(content2)
 		}
 		//window.Close()
 	})
 
-
-	content := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
-		label01, entry01, label02, entry02, label03, entry03, label04, entry04, label05, entry05, label06, entry06, label07, entry07,
+	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
+		label01, entry01,
+		label02, entry02,
+		label03, entry03,
+		label04, entry04,
+		label05, entry05,
+		label06, entry06,
+		label07, entry07,
+		labelfiller01, labelfiller02,
 		checkbox01, checkbox02,
-		button01,
-		labelfiller,
+		labelfiller03, labelfiller04,
+		labelfiller05, button01,
 	)
-	
 
 	window.SetContent(content)
 	//window.Resize(fyne.NewSize(380, 320))
 	window.ShowAndRun()
 
 }
-func gui2(a fyne.App) {
-	// time.Sleep(time.Second * 20)
-	window2 := a.NewWindow("Supermarket simulator results")
 
-	label08 := widget.NewLabel("Total Customers Served:" + strconv.Itoa(20))
-	label09 := widget.NewLabel("Total Customers lost:" + strconv.Itoa(20))
-	//label10 := widget.NewLabel("Sim run time:" + strconv.Itoa(simRunTime.Truncate(time.Second)))
-	label11 := widget.NewLabel("Total Items:" + strconv.Itoa(totalItemsProcessed))
-	content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(2),
-		label08, label09, label11)
-	window2.SetContent(content2)
-	window2.Show()
-}
-
-func runSim() int{
+func runSim() int {
 
 	tills = make([]*checkout, numCheckouts)
 	ops = make([]*operator, numOperators)
@@ -411,24 +394,14 @@ SpawnLoop:
 	fmt.Println()
 	totalCustsServed = 0
 
-
-
-
 	//output :="\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
 	//+"\nTotal Customers Lost  :"+custsLost+"\nSim RunTime"+simRunTime.Truncate(time.Second)+"Total Items Processed:"+totalItemsProcessed+"Mean Average Item per customer"+float32(totalItemsProcessed) / float32(totalCusts)
 
-	
 	return 1
 }
 
 func main() {
 
 	gui()
-	
-
 
 }
-
-
-
-
