@@ -52,6 +52,11 @@ type checkout struct {
 	numInQ             int32
 }
 
+type weather struct {
+	scale            [6]int
+	weatherCondition int
+}
+
 type byQLength []*checkout
 
 func (a byQLength) Len() int           { return len(a) }
@@ -153,6 +158,7 @@ var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
 var mrManager manager
+var weatherConditions weather
 
 var wg = &sync.WaitGroup{}
 
@@ -167,6 +173,32 @@ func main() {
 	mrManager.itemLimit = 5
 	mrManager.isSmart = true
 	mrManager.isQuikCheck = true
+	weatherConditions.scale = [6]int{1, 2, 3, 4, 5, 6}
+	weatherConditions.weatherCondition = 3
+
+	switch {
+	case weatherConditions.weatherCondition == 3:
+		custArrivalRate = custArrivalRate * 3
+		fmt.Println(custArrivalRate)
+		fmt.Println("The weather is mild today!")
+
+		/* 		case weatherConditions.weatherCondition == 2:
+				custArrivalRate = custArrivalRate * 0.9
+				fmt.Println("The weather is mild today!")
+
+		   	case weatherConditions.weatherCondition == 3:
+		   		custArrivalRate * time.Duration(6*time.Microsecond*1000)
+		   		fmt.Println(custArrivalRate)
+		   		fmt.Println("The weather is mild today!")
+
+			case weatherConditions.weatherCondition == 4:
+				custArrivalRate = custArrivalRate * 0.9
+				fmt.Println("The weather is mild today!")
+
+			case weatherConditions.weatherCondition == 5:
+				custArrivalRate = custArrivalRate * float32(0.9)
+				fmt.Println("The weather is mild today!") */
+	}
 
 	//checkout setup
 	for i := range tills {
@@ -235,6 +267,7 @@ func main() {
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
+						check.itemsProcessed += c.items
 						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
