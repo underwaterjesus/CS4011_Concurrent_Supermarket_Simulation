@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,6 +14,7 @@ import (
 //STRUCTS
 type customer struct {
 	items       int
+	queue		string
 	enterQAt    time.Time
 	patience    time.Duration
 	timeAtTill  time.Duration
@@ -90,7 +92,7 @@ func (cust *customer) joinQue(tills []*checkout) bool {
 			select {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
-
+				cust.queue = strconv.Itoa(till.id)
 				if smartCusts {
 					atomic.AddInt32(&till.numInQ, 1)
 				}
@@ -228,7 +230,7 @@ func main() {
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn((maxItems-minItems)+1) + minItems), time.Now(), 0, 0, time.Second}
+		custs <- &customer{(rand.Intn((maxItems-minItems)+1) + minItems), "0", time.Now(), 0, 0, time.Second}
 	}
 
 	//process customers at tills.
@@ -248,8 +250,9 @@ func main() {
 						if !ok {
 							break Spin
 						}
-
-						atomic.AddInt32(&check.numInQ, -1)
+						if smartCusts {
+							atomic.AddInt32(&check.numInQ, -1)
+						}
 
 						check.operator.scan(c)
 						check.totalQueueWait += c.timeInQueue
@@ -388,8 +391,9 @@ SpawnLoop:
 
 	for j, cust := range servedCustsArr {
 		fmt.Println("\nCustomer:", j+1)
-		fmt.Println(" Items in Trolley:", cust.items)
-		fmt.Println(" Time in Queue   :", (cust.timeInQueue * 1_000))
-		fmt.Println(" Time at Till    :", (cust.timeAtTill * 1_000))
+		fmt.Println(" Served at till number:", cust.queue)
+		fmt.Println(" Items in Trolley     :", cust.items)
+		fmt.Println(" Time in Queue        :", (cust.timeInQueue * 1_000))
+		fmt.Println(" Time at Till         :", (cust.timeAtTill * 1_000))
 	}
 }
