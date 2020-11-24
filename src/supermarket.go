@@ -236,6 +236,10 @@ func gui() {
 }
 
 func postProcesses() string {
+	if smartCusts {
+		sort.Sort(byTillID(tills))
+	}
+
 	totalCusts := 0
 	tillUseTime := 0 * time.Microsecond
 	tillOpenTime := 0 * time.Microsecond
@@ -255,9 +259,9 @@ func postProcesses() string {
 		}
 
 		if till.itemLimit < math.MaxInt32 {
-			output += ("_________________________\n")
+			output += ("__________________________\n")
 			output += fmt.Sprintf("%d item limit on this till\n", till.itemLimit)
-			output += ("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\n")
+			output += ("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\n")
 		}
 
 		totalCusts += till.customersServed
@@ -332,7 +336,7 @@ func runSim() int {
 
 	mrManager.name = "Mr. Manager"
 	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen / 2))
-	mrManager.itemLimit = 5
+	mrManager.itemLimit = managerItemLimit
 	mrManager.isSmart = smartManager
 	mrManager.isQuikCheck = true
 
