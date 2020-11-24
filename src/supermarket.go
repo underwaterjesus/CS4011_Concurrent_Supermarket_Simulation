@@ -14,7 +14,7 @@ import (
 //STRUCTS
 type customer struct {
 	items       int
-	queue		string
+	queue       string
 	enterQAt    time.Time
 	patience    time.Duration
 	timeAtTill  time.Duration
@@ -240,7 +240,6 @@ func main() {
 			go func(check *checkout, wg *sync.WaitGroup) {
 				defer func() {
 					wg.Done()
-					check.endTime = time.Now()
 				}()
 				check.startTime = time.Now()
 			Spin:
@@ -296,6 +295,10 @@ SpawnLoop:
 		close(till.queue.customers)
 	}
 	wg.Wait()
+
+	for _, till := range tills {
+		till.endTime = time.Now()
+	}
 
 	simRunTime := time.Since(simStart)
 
