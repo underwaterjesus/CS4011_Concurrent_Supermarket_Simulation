@@ -122,8 +122,7 @@ func (op *operator) scan(cust *customer) {
 	cust.timeInQueue = time.Since(cust.enterQAt)
 	start := time.Now()
 	for i := 0; i < n; i++ {
-		r := op.scanTime
-		time.Sleep(time.Duration(r))
+		time.Sleep(op.scanTime)
 	}
 	cust.timeAtTill = time.Since(start)
 }
@@ -176,8 +175,8 @@ var weatherConditions weather
 var scale int64 = 1000
 var numCheckouts = 8
 var checkoutsOpen = 8
-var numOperators = 8
-var numCusts = 100
+var numOperators = 7
+var numCusts = 200
 var custsLost = 0
 var minItems = 1
 var maxItems = 90
@@ -185,9 +184,9 @@ var minPatience = 0
 var maxPatience = 1
 var maxQueueLength = 6
 var smartCusts = false
-var minScanTime time.Duration = 5 * time.Microsecond * 1000
-var maxScanTime time.Duration = 60 * time.Microsecond * 1000
-var custArrivalRate time.Duration = 180 * time.Microsecond * 1000 //5mins scaled secs->microsecs
+var minScanTime time.Duration = 3 * time.Microsecond
+var maxScanTime time.Duration = 10 * time.Microsecond
+var custArrivalRate time.Duration = 180 * time.Microsecond //
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
 
@@ -249,7 +248,7 @@ func main() {
 		mrManager.sortOperators()
 	}
 
-	for i := 0; i < numCheckouts; i++ {
+	for i := 0; i < len(ops); i++ {
 		if tills[i].open {
 			tills[i].operator = ops[i]
 			wg.Add(1)
@@ -285,6 +284,7 @@ func main() {
 						check.operator.scan(c)
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
+						check.itemsProcessed += c.items
 						check.customersServed++
 						check.itemsProcessed += c.items
 						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
@@ -331,26 +331,90 @@ SpawnLoop:
 	simRunTime := time.Since(simStart)
 	fmt.Println()
 	totalCusts := 0
+	tillUseTime := 0 * time.Microsecond
+	tillOpenTime := 0 * time.Microsecond
+	waitTime := 0 * time.Microsecond
+	runningUtilization := 0.0
 
 	fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
 	if smartCusts {
 		sort.Sort(byTillID(tills))
 	}
-	for _, till := range tills {
-		totalCusts += till.customersServed
 
+	fmt.Println("**********\nSIM REPORT\n**********")
+	fmt.Println("\nINDIVIDUAL TILLS:")
+
+	for _, till := range tills {
 		fmt.Println("\nTILL", till.id, "")
+		if !till.open {
+			fmt.Println("TILL CLOSED")
+			continue
+		}
+		if till.operator == nil {
+			fmt.Println("NO OPERATOR ASSIGNED")
+			continue
+		}
+
+		if till.itemLimit < math.MaxInt32 {
+			fmt.Println("__________________________")
+			fmt.Println(till.itemLimit, "item limit on this till")
+			fmt.Println("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾")
+		}
+
+		totalCusts += till.customersServed
 		totalItemsProcessed += till.itemsProcessed
-		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
-		fmt.Println("  Max Item Limit:", till.itemLimit)
-		fmt.Println("  Customers Served:", till.customersServed)
-		fmt.Println("  Total time waited by customers in queue:", till.totalQueueWait.Truncate(time.Second))
-		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second))
+		open := time.Duration(till.endTime.Sub(till.startTime))
+		tillOpenTime += open
+		tillUseTime += till.totalScanTime
+		waitTime += till.totalQueueWait
+		utilization := (float64(till.totalScanTime) / float64(open)) * 100.0
+		runningUtilization += utilization
+		meanItems := float64(till.itemsProcessed) / float64(till.customersServed)
+		meanWait := time.Duration(0)
+		if math.IsNaN(meanItems) {
+			meanItems = 0.0
+		}
+		if till.customersServed > 0 {
+			meanWait = time.Duration(float64(till.totalQueueWait*1_000) / float64(till.customersServed)).Truncate(time.Second)
+		}
+
+		fmt.Println(" Time Open                              :", (open * 1_000).Truncate(time.Second))
+		fmt.Println(" Total Scanning                         :", (till.totalScanTime * 1_000).Truncate(time.Second))
+		fmt.Println(" Customers Served                       :", till.customersServed)
+		fmt.Println(" Items Processed                        :", till.itemsProcessed)
+		fmt.Printf(" Mean Items Per Customer                : %.2f\n", meanItems)
+		fmt.Printf(" Utilization                            : %.2f%%\n", utilization)
+		fmt.Println(" Mean Customer Wait Time                :", meanWait)
+		fmt.Println(" Total time waited by customers in queue:", (till.totalQueueWait * 1_000).Truncate(time.Second))
+
+		//if till.totalQueueWait > 0*time.Nanosecond {
+		//	fmt.Println("  Total time waited by customers in queue:", (till.totalQueueWait * 1_000).Truncate(time.Second))
+		//} else {
+		//	fmt.Println("  Total time waited by customers in queue: 0")
+		//}
+
+		//if till.totalQueueWait > 0*time.Nanosecond {
+		//	fmt.Println("  Total time scanning:", (till.totalScanTime * 1_000).Truncate(time.Second))
+		//} else {
+		//	fmt.Println("  Total time Scanning: 0")
+		//}
 	}
 
-	fmt.Println("\nTotal Customers Served:", totalCusts)
-	fmt.Println("\nTotal Customers Lost  :", custsLost)
-	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
-	fmt.Println("Total Items Processed:", totalItemsProcessed)
-	fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCusts)))
+	divisor := checkoutsOpen
+	if numOperators < checkoutsOpen {
+		divisor = numOperators
+	}
+
+	fmt.Println("\n\nTOTALS:")
+	fmt.Println(" Total Customers Served          :", totalCusts)
+	fmt.Println(" Total Customers Lost            :", custsLost)
+	fmt.Println(" Total Items Processed           :", totalItemsProcessed)
+	fmt.Printf(" Mean Number Items per Customer  : %.2f\n", (float64(totalItemsProcessed) / float64(totalCusts)))
+
+	fmt.Printf("\n Total Till Utilization          : %.2f%%\n", (float64(tillUseTime)/float64(tillOpenTime))*100.0)
+	fmt.Printf(" Mean Till Utilization           : %.2f%%\n", runningUtilization/float64(divisor))
+	fmt.Println(" Mean Customer Wait Time         :", time.Duration(float64(waitTime*1_000)/float64(totalCusts)).Truncate(time.Second))
+	fmt.Println(" Store Processed a customer every:", time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)).Truncate(time.Second))
+
+	fmt.Println("\n\nSim RunTime:", simRunTime)
 }
