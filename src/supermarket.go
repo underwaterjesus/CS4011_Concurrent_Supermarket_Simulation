@@ -325,8 +325,8 @@ SpawnLoop:
 		fmt.Println(" Total Scanning                         :", (till.totalScanTime * 1_000).Truncate(time.Second))
 		fmt.Println(" Customers Served                       :", till.customersServed)
 		fmt.Println(" Items Processed                        :", till.itemsProcessed)
-		fmt.Println(" Mean Items Per Customer                :", meanItems)
-		fmt.Println(" Utilization                            :", utilization, "%")
+		fmt.Printf(" Mean Items Per Customer                : %.2f\n", meanItems)
+		fmt.Printf(" Utilization                            : %.2f%%\n", utilization)
 		fmt.Println(" Mean Customer Wait Time                :", meanWait)
 		fmt.Println(" Total time waited by customers in queue:", (till.totalQueueWait * 1_000).Truncate(time.Second))
 
@@ -352,12 +352,12 @@ SpawnLoop:
 	fmt.Println(" Total Customers Served          :", totalCusts)
 	fmt.Println(" Total Customers Lost            :", custsLost)
 	fmt.Println(" Total Items Processed           :", totalItemsProcessed)
-	fmt.Println(" Mean Number Items per Customer  :", (float64(totalItemsProcessed) / float64(totalCusts)))
+	fmt.Printf(" Mean Number Items per Customer  : %.2f\n", (float64(totalItemsProcessed) / float64(totalCusts)))
 
-	fmt.Println("\n Total Till Utilization          :", (float64(tillUseTime)/float64(tillOpenTime))*100.0, "%")
-	fmt.Println(" Mean Till Utilization           :", runningUtilization/float64(divisor))
-	fmt.Println(" Mean Customer Wait Time         :", time.Duration(float64(waitTime*1_000)/float64(totalCusts)))
-	fmt.Println(" Store Processed a customer every:", time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)))
+	fmt.Printf("\n Total Till Utilization          : %.2f%%\n", (float64(tillUseTime)/float64(tillOpenTime))*100.0)
+	fmt.Printf(" Mean Till Utilization           : %.2f%%\n", runningUtilization/float64(divisor))
+	fmt.Println(" Mean Customer Wait Time         :", time.Duration(float64(waitTime*1_000)/float64(totalCusts)).Truncate(time.Second))
+	fmt.Println(" Store Processed a customer every:", time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)).Truncate(time.Second))
 
 	fmt.Println("\n\nSim RunTime:", simRunTime)
 }
