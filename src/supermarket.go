@@ -211,43 +211,49 @@ func gui() {
 			if smartCusts {
 				sort.Sort(byTillID(tills))
 			}
+
+			
+			label08 := widget.NewLabel("Output")
+
+			avgItem := 0.0
 			for _, till := range tills {
 				totalCustsServed += till.customersServed
-		
-				output += "\nTILL " +  strconv.Itoa(till.id) + ""
 				totalItemsProcessed += till.itemsProcessed
+				
+	
+				output += "\n\nTILL " +  strconv.Itoa(till.id) + ""
+
 				output += "\n  Time Open: " + till.endTime.Sub(till.startTime).Truncate(time.Second).String()
 				output += "\n  Max Item Limit: " + strconv.Itoa(till.itemLimit)
 				output += "\n  Customers Served: " + strconv.Itoa(till.customersServed)
 				output += "\n  Total time waited by customers in queue: " +till.totalQueueWait.Truncate(time.Second).String()
 				output += "\n  Total time scanning: " + till.totalScanTime.Truncate(time.Second).String()
+
+				label08.SetText(output)
+
 			}
-		
-			fmt.Println("\nTotal Customers Served:", totalCustsServed)
-			fmt.Println("\nTotal Customers Lost  :", custsLost)
-			fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
-			fmt.Println("Total Items Processed:", totalItemsProcessed)
-			fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCustsServed)))
 
-
-
-
-
-
-
-
-
+			output += "\n\nTotal Customers Served: " + strconv.Itoa(totalCustsServed)
+			output += "\nTotal Customers Lost: " +  strconv.Itoa(custsLost)
+			output += "\nSim RunTime: " + simRunTime.Truncate(time.Second).String()
+			output += "\nTotal Items Processed: " + strconv.Itoa(totalItemsProcessed)
+			avgItem = (float64(totalItemsProcessed) / float64(totalCustsServed))
+			output += "\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'E', -1, 32)
+			
 
 
 			output +="\n\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
 			
-			label08 := widget.NewLabel(output)
+			//label08 := widget.NewLabel(output)
 
-			button02 := widget.NewButton("Close", func() {
-				window.Close()
-			})
+			// button02 := widget.NewButton("Close", func() {
+			//  	window.Close()
+			// })
 		
-			content2 := fyne.NewContainerWithLayout(layout.NewMaxLayout(), label08, button02,)
+			cd1 := widget.NewCard("Output Info", "aaaa", label08)
+			scrllCont := widget.NewScrollContainer(cd1)
+
+			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
 
 			window.SetContent(content2)
 		}
@@ -264,22 +270,8 @@ func gui() {
 	
 
 	window.SetContent(content)
-	//window.Resize(fyne.NewSize(380, 320))
 	window.ShowAndRun()
 
-}
-func gui2(a fyne.App) {
-	// time.Sleep(time.Second * 20)
-	window2 := a.NewWindow("Supermarket simulator results")
-
-	label08 := widget.NewLabel("Total Customers Served:" + strconv.Itoa(20))
-	label09 := widget.NewLabel("Total Customers lost:" + strconv.Itoa(20))
-	//label10 := widget.NewLabel("Sim run time:" + strconv.Itoa(simRunTime.Truncate(time.Second)))
-	label11 := widget.NewLabel("Total Items:" + strconv.Itoa(totalItemsProcessed))
-	content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(2),
-		label08, label09, label11)
-	window2.SetContent(content2)
-	window2.Show()
 }
 
 func runSim() int{
