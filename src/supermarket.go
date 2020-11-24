@@ -138,6 +138,7 @@ var numCheckouts int
 var checkoutsOpen int
 var numOperators int
 var numCusts int
+var totalCustsServed int
 var custsLost = 0
 var minItems int
 var maxItems int
@@ -146,6 +147,7 @@ var smartCusts bool
 var smartManager bool
 var minScanTime time.Duration = 5 * time.Microsecond * 1000
 var maxScanTime time.Duration = 60 * time.Microsecond * 1000
+var simRunTime time.Duration
 var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
@@ -161,10 +163,10 @@ var mrManager manager
 
 var wg = &sync.WaitGroup{}
 
+//GUI function
 func gui() {
 	app := app.New()
-	window := app.NewWindow("Supermarket simulator")
-
+	window := app.NewWindow("Supermarket Simulator Param Input")
 	label01 := widget.NewLabel("Number of Checkouts:")
 	label02 := widget.NewLabel("Checkouts open:")
 	label03 := widget.NewLabel("Number of Checkout operartors:")
@@ -186,9 +188,11 @@ func gui() {
 		smartManager = value
 
 	})
-	checkbox02 := widget.NewCheck("Smart Customer", func(value bool) {
+	checkbox02 := widget.NewCheck("Smart Customers", func(value bool) {
 		smartCusts = value
 	})
+
+
 	button01 := widget.NewButton("Begin simulation", func() {
 		numCheckouts, _ = strconv.Atoi(entry01.Text)
 		checkoutsOpen, _ = strconv.Atoi(entry02.Text)
@@ -197,36 +201,74 @@ func gui() {
 		minItems, _ = strconv.Atoi(entry05.Text)
 		maxItems, _ = strconv.Atoi(entry06.Text)
 		maxQueueLength, _ = strconv.Atoi(entry07.Text)
-		window.Close()
+
+
+
+		if runSim() == 1 {
+
+			output := "Output:\n"
+			fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
+			if smartCusts {
+				sort.Sort(byTillID(tills))
+			}
+			for _, till := range tills {
+				totalCustsServed += till.customersServed
+		
+				output += "\nTILL " +  strconv.Itoa(till.id) + ""
+				totalItemsProcessed += till.itemsProcessed
+				output += "\n  Time Open: " + till.endTime.Sub(till.startTime).Truncate(time.Second).String()
+				output += "\n  Max Item Limit: " + strconv.Itoa(till.itemLimit)
+				output += "\n  Customers Served: " + strconv.Itoa(till.customersServed)
+				output += "\n  Total time waited by customers in queue: " +till.totalQueueWait.Truncate(time.Second).String()
+				output += "\n  Total time scanning: " + till.totalScanTime.Truncate(time.Second).String()
+			}
+		
+			fmt.Println("\nTotal Customers Served:", totalCustsServed)
+			fmt.Println("\nTotal Customers Lost  :", custsLost)
+			fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
+			fmt.Println("Total Items Processed:", totalItemsProcessed)
+			fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCustsServed)))
+
+
+
+
+
+
+
+
+
+
+
+			output +="\n\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
+			
+			label08 := widget.NewLabel(output)
+
+			button02 := widget.NewButton("Close", func() {
+				window.Close()
+			})
+		
+			content2 := fyne.NewContainerWithLayout(layout.NewMaxLayout(), label08, button02,)
+
+			window.SetContent(content2)
+		}
+		//window.Close()
 	})
+
+
 	content := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
-		label01,
-		entry01,
-		label02,
-		entry02,
-		label03,
-		entry03,
-		label04,
-		entry04,
-		label05,
-		entry05,
-		label06,
-		entry06,
-		label07,
-		entry07,
-		checkbox01,
-		checkbox02,
+		label01, entry01, label02, entry02, label03, entry03, label04, entry04, label05, entry05, label06, entry06, label07, entry07,
+		checkbox01, checkbox02,
 		button01,
 		labelfiller,
 	)
+	
 
 	window.SetContent(content)
 	//window.Resize(fyne.NewSize(380, 320))
 	window.ShowAndRun()
 }
-func main() {
 
-	gui()
+func runSim() int{
 
 	tills = make([]*checkout, numCheckouts)
 	ops = make([]*operator, numOperators)
@@ -351,41 +393,28 @@ SpawnLoop:
 		close(till.queue.customers)
 	}
 	wg.Wait()
-	simRunTime := time.Since(simStart)
+	simRunTime = time.Since(simStart)
 	fmt.Println()
-	totalCusts := 0
+	totalCustsServed = 0
 
-	fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
-	if smartCusts {
-		sort.Sort(byTillID(tills))
-	}
-	for _, till := range tills {
-		totalCusts += till.customersServed
 
-		fmt.Println("\nTILL", till.id, "")
-		totalItemsProcessed += till.itemsProcessed
-		fmt.Println("  Time Open:", till.endTime.Sub(till.startTime).Truncate(time.Second))
-		fmt.Println("  Max Item Limit:", till.itemLimit)
-		fmt.Println("  Customers Served:", till.customersServed)
-		fmt.Println("  Total time waited by customers in queue:", till.totalQueueWait.Truncate(time.Second))
-		fmt.Println("  Total time scanning:", till.totalScanTime.Truncate(time.Second))
-	}
 
-	fmt.Println("\nTotal Customers Served:", totalCusts)
-	fmt.Println("\nTotal Customers Lost  :", custsLost)
-	fmt.Println("\nSim RunTime", simRunTime.Truncate(time.Second))
-	fmt.Println("Total Items Processed:", totalItemsProcessed)
-	fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCusts)))
 
-	// app := app.New()
-	// window2 := app.NewWindow("Supermarket simulator results")
+	//output :="\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
+	//+"\nTotal Customers Lost  :"+custsLost+"\nSim RunTime"+simRunTime.Truncate(time.Second)+"Total Items Processed:"+totalItemsProcessed+"Mean Average Item per customer"+float32(totalItemsProcessed) / float32(totalCusts)
 
-	// label08 := widget.NewLabel("Total Customers Served:" + strconv.Itoa(totalCusts))
-	// label09 := widget.NewLabel("Total Customers lost:" + strconv.Itoa(totalCusts))
-	// //label10 := widget.NewLabel("Sim run time:" + strconv.Itoa(simRunTime.Truncate(time.Second)))
-	// label11 := widget.NewLabel("Total Items:" + strconv.Itoa(totalItemsProcessed))
-	// content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
-	// 	label08, label09, label11)
-	// window2.SetContent(content2)
-	// window2.ShowAndRun()
+	
+	return 1
 }
+
+func main() {
+
+	gui()
+	
+
+
+}
+
+
+
+
