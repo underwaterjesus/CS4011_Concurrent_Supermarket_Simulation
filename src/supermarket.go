@@ -258,7 +258,7 @@ func gui() {
 	)
 
 	window.SetContent(content)
-	window.Resize(fyne.Size{500,600})
+	window.Resize(fyne.Size{600,700})
 	window.ShowAndRun()
 
 }
@@ -309,14 +309,14 @@ func postProcesses() string {
 			meanWait = time.Duration(float64(till.totalQueueWait*1_000) / float64(till.customersServed)).Truncate(time.Second)
 		}
 
-		output += fmt.Sprintf(" Time Open                              : %s\n", (open * 1_000).Truncate(time.Second).String())
-		output += fmt.Sprintf(" Total Scanning                         : %s\n", (till.totalScanTime * 1_000).Truncate(time.Second).String())
-		output += fmt.Sprintf(" Customers Served                       : %d\n", till.customersServed)
-		output += fmt.Sprintf(" Items Processed                        : %d\n", till.itemsProcessed)
-		output += fmt.Sprintf(" Mean Items Per Customer                : %.2f\n", meanItems)
-		output += fmt.Sprintf(" Utilization                            : %.2f%%\n", utilization)
-		output += fmt.Sprintf(" Mean Customer Wait Time                : %s\n", meanWait.String())
-		output += fmt.Sprintf(" Total time waited by customers in queue: %s\n", (till.totalQueueWait * 1_000).Truncate(time.Second).String())
+		output += fmt.Sprintf(" Time Open                                   : %s\n", (open * 1_000).Truncate(time.Second).String())
+		output += fmt.Sprintf(" Total Scanning                              : %s\n", (till.totalScanTime * 1_000).Truncate(time.Second).String())
+		output += fmt.Sprintf(" Customers Served                            : %d\n", till.customersServed)
+		output += fmt.Sprintf(" Items Processed                             : %d\n", till.itemsProcessed)
+		output += fmt.Sprintf(" Mean Items Per Customer                     : %.2f\n", meanItems)
+		output += fmt.Sprintf(" Utilization                                 : %.2f%%\n", utilization)
+		output += fmt.Sprintf(" Mean Customer Wait Time                     : %s\n", meanWait.String())
+		output += fmt.Sprintf(" Cumulative time waited by customers in queue: %s\n", (till.totalQueueWait * 1_000).Truncate(time.Second).String())
 	}
 
 	divisor := checkoutsOpen
