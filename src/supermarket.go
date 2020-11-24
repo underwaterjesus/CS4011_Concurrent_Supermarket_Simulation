@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"fyne.io/fyne"
@@ -18,6 +19,7 @@ import (
 //STRUCTS
 type customer struct {
 	items       int
+	queue		string
 	enterQAt    time.Time
 	patience    time.Duration
 	timeAtTill  time.Duration
@@ -59,6 +61,10 @@ type checkout struct {
 	numInQ             int32
 }
 
+type weather struct {
+	weatherCondition float32
+}
+
 type byQLength []*checkout
 
 func (a byQLength) Len() int           { return len(a) }
@@ -91,7 +97,11 @@ func (cust *customer) joinQue(tills []*checkout, items int) bool {
 			select {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
-				till.numInQ++
+				cust.queue = strconv.Itoa(till.id)
+				if smartCusts {
+					atomic.AddInt32(&till.numInQ, 1)
+				}
+
 				return true
 
 			default:
@@ -133,6 +143,14 @@ func (op *operator) scan(cust *customer) {
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
 const maxItem = 2147483647
+
+//Array of strings not implemented yet
+var setWeather = 1 // Change from 0 - 4 to see changes in customerArrival Rate
+var weatherStrings = [5]string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
+var weatherScale = [5]float64{0.4, 0.8, 1, 1.2, 0.6}
+
+//setting user input to Mild => 2 => 1
+var weatherConditions weather
 
 var scale int64 = 1000
 var numCheckouts int
@@ -327,6 +345,7 @@ func postProcesses() string {
 
 	for j, cust := range servedCustsArr {
 		output += fmt.Sprintf("\n\nCustomer %d:\n", j+1)
+		output += fmt.Sprintf(" Till Used       : %s\n", cust.queue)
 		output += fmt.Sprintf(" Items in Trolley: %d\n", cust.items)
 		output += fmt.Sprintf(" Time in Queue   : %s\n", (cust.timeInQueue * 1_000).Truncate(time.Second).String())
 		output += fmt.Sprintf(" Time at Till    : %s\n", (cust.timeAtTill * 1_000).Truncate(time.Second).String())
@@ -343,12 +362,14 @@ func runSim() int {
 	servedCusts = make(chan *customer, numCusts)
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
-
 	mrManager.name = "Mr. Manager"
 	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen / 2))
 	mrManager.itemLimit = managerItemLimit
 	mrManager.isSmart = smartManager
 	mrManager.isQuikCheck = true
+
+	//Modify the customer arrival rate based on the weather
+	custArrivalRate = time.Duration(float64(custArrivalRate) * float64(weatherScale[setWeather]))
 
 	//checkout setup
 	for i := range tills {
@@ -389,7 +410,7 @@ func runSim() int {
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), time.Now(), 0, 0, time.Second}
+		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), "0", time.Now(), 0, 0, time.Second}
 	}
 
 	//process customers at tills.
@@ -409,9 +430,9 @@ func runSim() int {
 						if !ok {
 							break Spin
 						}
-
-						check.numInQ--
-						//Keep this in mind ^^^
+						if smartCusts {
+							atomic.AddInt32(&check.numInQ, -1)
+						}
 
 						check.operator.scan(c)
 						check.totalQueueWait += c.timeInQueue
