@@ -207,7 +207,7 @@ func gui() {
 
 		if runSim() == 1 {
 
-			output := "Output:\n"
+			output := ""
 			fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
 			if smartCusts {
 				sort.Sort(byTillID(tills))
@@ -230,28 +230,21 @@ func gui() {
 				output += "\n  Total time waited by customers in queue: " + till.totalQueueWait.Truncate(time.Second).String()
 				output += "\n  Total time scanning: " + till.totalScanTime.Truncate(time.Second).String()
 
-				label08.SetText(output)
+				
 
 			}
 
 			output += "\n\nTotal Customers Served: " + strconv.Itoa(totalCustsServed)
 			output += "\nTotal Customers Lost: " +  strconv.Itoa(custsLost)
-			output += "\nSim RunTime: " + simRunTime.Truncate(time.Second).String()
-			output += "\nTotal Items Processed: " + strconv.Itoa(totalItemsProcessed)
+			output += "\n\nSim RunTime: " + simRunTime.Truncate(time.Second).String()
+			output += "\n\nTotal Items Processed: " + strconv.Itoa(totalItemsProcessed)
 			avgItem = (float64(totalItemsProcessed) / float64(totalCustsServed))
-			output += "\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'E', -1, 32)
+			output += "\n\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'E', -1, 32)
+
 			
+			label08.SetText(output)
 
-
-			output +="\n\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
-			
-			//label08 := widget.NewLabel(output)
-
-			// button02 := widget.NewButton("Close", func() {
-			//  	window.Close()
-			// })
-		
-			cd1 := widget.NewCard("Output Info", "aaaa", label08)
+			cd1 := widget.NewCard("Output Info", "", label08)
 			scrllCont := widget.NewScrollContainer(cd1)
 
 			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
@@ -276,6 +269,7 @@ func gui() {
 	)
 
 	window.SetContent(content)
+	window.Resize(fyne.NewSize(300,300))
 	window.ShowAndRun()
 
 }
