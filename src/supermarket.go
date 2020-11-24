@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"sync"
@@ -53,8 +54,7 @@ type checkout struct {
 }
 
 type weather struct {
-	scale            [6]int
-	weatherCondition int
+	weatherCondition float32
 }
 
 type byQLength []*checkout
@@ -128,9 +128,38 @@ func (op *operator) scan(cust *customer) {
 	cust.timeAtTill = time.Since(start)
 }
 
+//Getting value at index of anything
+func valueAtIndexOf(arr [5]float64, x int) float64 {
+	for c := 0; c < len(arr); c++ {
+		if float64(c) == float64(x) {
+			return arr[c]
+		}
+	}
+	return -1
+}
+
+//Converting float32 to int64 because getting errors when multiplying float32 * time.duration, even if I cast float32 to a time.duration type
+func convertWeatherScale(factor float64) float64 {
+	output := float64(30)
+	if factor != 1 {
+		output *= factor
+		return output
+	} else {
+		return output
+	}
+}
+
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
 const maxItem = 2147483647
+
+//Array of strings not implemented yet
+var weatherStrings = [5]string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
+var weatherScale = [5]float64{0.4, 0.8, 1, 1.2, 0.6}
+var setWeather = 2 // Change from 0 - 4 to see changes in customerArrival Rate
+
+//setting user input to Mild => 2 => 1
+var weatherConditions weather
 
 var scale int64 = 1000
 var numCheckouts = 8
@@ -158,14 +187,12 @@ var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
 var mrManager manager
-var weatherConditions weather
 
 var wg = &sync.WaitGroup{}
 
 func main() {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
-
 	//This seems like an appropriate place for the time mark,
 	//like when the manager first opens the door to the market at the start of the day.
 	mrManager.name = "Mr. Manager"
@@ -173,32 +200,10 @@ func main() {
 	mrManager.itemLimit = 5
 	mrManager.isSmart = true
 	mrManager.isQuikCheck = true
-	weatherConditions.scale = [6]int{1, 2, 3, 4, 5, 6}
-	weatherConditions.weatherCondition = 3
-
-	switch {
-	case weatherConditions.weatherCondition == 3:
-		custArrivalRate = custArrivalRate * 3
-		fmt.Println(custArrivalRate)
-		fmt.Println("The weather is mild today!")
-
-		/* 		case weatherConditions.weatherCondition == 2:
-				custArrivalRate = custArrivalRate * 0.9
-				fmt.Println("The weather is mild today!")
-
-		   	case weatherConditions.weatherCondition == 3:
-		   		custArrivalRate * time.Duration(6*time.Microsecond*1000)
-		   		fmt.Println(custArrivalRate)
-		   		fmt.Println("The weather is mild today!")
-
-			case weatherConditions.weatherCondition == 4:
-				custArrivalRate = custArrivalRate * 0.9
-				fmt.Println("The weather is mild today!")
-
-			case weatherConditions.weatherCondition == 5:
-				custArrivalRate = custArrivalRate * float32(0.9)
-				fmt.Println("The weather is mild today!") */
-	}
+	x := valueAtIndexOf(weatherScale, setWeather)
+	x = math.Abs(x) //sometimes returns negative values
+	custArrivalRate = (time.Duration(convertWeatherScale(x)) * time.Microsecond * 1000)
+	fmt.Println("Customer arrival rate:", custArrivalRate)
 
 	//checkout setup
 	for i := range tills {
