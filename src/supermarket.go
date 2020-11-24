@@ -53,6 +53,10 @@ type checkout struct {
 	numInQ             int32
 }
 
+type weather struct {
+	weatherCondition float32
+}
+
 type byQLength []*checkout
 
 func (a byQLength) Len() int           { return len(a) }
@@ -127,6 +131,14 @@ func (op *operator) scan(cust *customer) {
 //seconds scaled to microseconds(1e-6 seconds)
 const maxItem = 2147483647
 
+//Array of strings not implemented yet
+var setWeather = 1 // Change from 0 - 4 to see changes in customerArrival Rate
+var weatherStrings = [5]string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
+var weatherScale = [5]float64{0.4, 0.8, 1, 1.2, 0.6}
+
+//setting user input to Mild => 2 => 1
+var weatherConditions weather
+
 var scale int64 = 1000
 var numCheckouts = 8
 var checkoutsOpen = 8
@@ -159,7 +171,6 @@ var wg = &sync.WaitGroup{}
 func main() {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
-
 	//This seems like an appropriate place for the time mark,
 	//like when the manager first opens the door to the market at the start of the day.
 	mrManager.name = "Mr. Manager"
@@ -167,6 +178,10 @@ func main() {
 	mrManager.itemLimit = 5
 	mrManager.isSmart = true
 	mrManager.isQuikCheck = true
+
+	//Modify the customer arrival rate based on the weather
+	custArrivalRate = time.Duration(float64(custArrivalRate) * float64(weatherScale[setWeather]))
+	fmt.Println(custArrivalRate)
 
 	//checkout setup
 	for i := range tills {
@@ -236,6 +251,7 @@ func main() {
 						check.totalScanTime += c.timeAtTill
 						check.itemsProcessed += c.items
 						check.customersServed++
+						check.itemsProcessed += c.items
 						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
 						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
 						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
@@ -284,6 +300,9 @@ SpawnLoop:
 	tillOpenTime := 0 * time.Microsecond
 	waitTime := 0 * time.Microsecond
 	runningUtilization := 0.0
+	weatherToday := weatherStrings[setWeather]
+	fmt.Printf("The weather today is %s !\n", weatherToday)
+	fmt.Println("Customer arrival rate:", custArrivalRate)
 
 	fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
 	if smartCusts {
