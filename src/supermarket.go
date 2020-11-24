@@ -138,15 +138,27 @@ func valueAtIndexOf(arr [5]float64, x int) float64 {
 	return -1
 }
 
-//Converting float32 to int64 because getting errors when multiplying float32 * time.duration, even if I cast float32 to a time.duration type
-func convertWeatherScale(factor float64) float64 {
-	output := float64(30)
+//Operating on the values in the weatherScale array
+func convertWeatherScale(custArrivalRate time.Duration, factor float64) float64 {
+	custArrivalRate /= time.Microsecond
+	defaultOutput := float64(custArrivalRate)
 	if factor != 1 {
-		output *= factor
-		return output
+		defaultOutput *= factor
+		return defaultOutput
 	} else {
-		return output
+		return defaultOutput
 	}
+}
+
+//get index of String array, implementation: SliceIndex(len(arr), func(i int) bool { return arr[i] == "Z" })
+//NOT IMPLEMENTED UNTIL GUI
+func SliceIndex(limit int, predicate func(i int) bool) int {
+	for i := 0; i < limit; i++ {
+		if predicate(i) {
+			return i
+		}
+	}
+	return -1
 }
 
 //GLOBALS
@@ -156,7 +168,7 @@ const maxItem = 2147483647
 //Array of strings not implemented yet
 var weatherStrings = [5]string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
 var weatherScale = [5]float64{0.4, 0.8, 1, 1.2, 0.6}
-var setWeather = 2 // Change from 0 - 4 to see changes in customerArrival Rate
+var setWeather = 0 // Change from 0 - 4 to see changes in customerArrival Rate
 
 //setting user input to Mild => 2 => 1
 var weatherConditions weather
@@ -175,7 +187,7 @@ var maxQueueLength = 6
 var smartCusts = false
 var minScanTime time.Duration = 5 * time.Microsecond * 1000
 var maxScanTime time.Duration = 60 * time.Microsecond * 1000
-var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
+var custArrivalRate time.Duration = 180 * time.Microsecond * 1000 //5mins scaled secs->microsecs
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
 
@@ -200,9 +212,11 @@ func main() {
 	mrManager.itemLimit = 5
 	mrManager.isSmart = true
 	mrManager.isQuikCheck = true
-	x := valueAtIndexOf(weatherScale, setWeather)
-	x = math.Abs(x) //sometimes returns negative values
-	custArrivalRate = (time.Duration(convertWeatherScale(x)) * time.Microsecond * 1000)
+
+	//WEATHER BITS
+	indexOfWeatherScale := valueAtIndexOf(weatherScale, setWeather)
+	indexOfWeatherScale = math.Abs(indexOfWeatherScale) //sometimes returns negative values
+	custArrivalRate = (time.Duration(convertWeatherScale(custArrivalRate, indexOfWeatherScale)) * time.Microsecond * 1000)
 	fmt.Println("Customer arrival rate:", custArrivalRate)
 
 	//checkout setup
