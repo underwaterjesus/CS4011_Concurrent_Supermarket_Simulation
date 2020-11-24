@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -123,8 +124,7 @@ func (op *operator) scan(cust *customer) {
 	cust.timeInQueue = time.Since(cust.enterQAt)
 	start := time.Now()
 	for i := 0; i < n; i++ {
-		r := op.scanTime
-		time.Sleep(time.Duration(r))
+		time.Sleep(op.scanTime)
 	}
 	cust.timeAtTill = time.Since(start)
 }
@@ -143,12 +143,13 @@ var custsLost = 0
 var minItems int
 var maxItems int
 var maxQueueLength int
+var managerItemLimit int
 var smartCusts bool
 var smartManager bool
-var minScanTime time.Duration = 5 * time.Microsecond * 1000
-var maxScanTime time.Duration = 60 * time.Microsecond * 1000
+var minScanTime time.Duration = 3 * time.Microsecond
+var maxScanTime time.Duration = 10 * time.Microsecond
 var simRunTime time.Duration
-var custArrivalRate time.Duration = 30 * time.Microsecond * 1000 //5mins scaled secs->microsecs
+var custArrivalRate time.Duration = 180 * time.Microsecond //5mins scaled secs->microsecs
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
 
@@ -174,6 +175,7 @@ func gui() {
 	label05 := widget.NewLabel("Minimum Items:")
 	label06 := widget.NewLabel("Maximum Items:")
 	label07 := widget.NewLabel("Max Queue Length:")
+	label08 := widget.NewLabel("Manager Checkout Item Limit:")
 
 	labelfiller01 := widget.NewLabel("")
 	labelfiller02 := widget.NewLabel("")
@@ -187,10 +189,10 @@ func gui() {
 	entry05 := widget.NewEntry()
 	entry06 := widget.NewEntry()
 	entry07 := widget.NewEntry()
+	entry08 := widget.NewEntry()
 
 	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
 		smartManager = value
-
 	})
 	checkbox02 := widget.NewCheck("Smart Customers", func(value bool) {
 		smartCusts = value
@@ -204,58 +206,20 @@ func gui() {
 		minItems, _ = strconv.Atoi(entry05.Text)
 		maxItems, _ = strconv.Atoi(entry06.Text)
 		maxQueueLength, _ = strconv.Atoi(entry07.Text)
+		managerItemLimit, _ = strconv.Atoi(entry08.Text)
 
 		if runSim() == 1 {
 
-			if smartCusts {
-				sort.Sort(byTillID(tills))
-			}
-
-			outputText := ""
-			outputLabel := widget.NewLabel("Output")
-			avgItem := 0.0
-			itmLmt := "none"
-			for _, till := range tills {
-				if(till.itemLimit<maxItem){
-					itmLmt = "Yes - " + strconv.Itoa(till.itemLimit)
-				}
-				totalCustsServed += till.customersServed
-				totalItemsProcessed += till.itemsProcessed
-		
-				outputText += "\n\nTILL " +  strconv.Itoa(till.id) + ""
-				outputText += "\n  Time Open: " + till.endTime.Sub(till.startTime).Truncate(time.Second).String()
-				outputText += "\n  Max Item Limit: " + itmLmt
-				outputText += "\n  Customers Served: " + strconv.Itoa(till.customersServed)
-				outputText += "\n  Total time waited by customers in queue: " + till.totalQueueWait.Truncate(time.Second).String()
-				outputText += "\n  Total time scanning: " + till.totalScanTime.Truncate(time.Second).String()
-			}
-
-			avgItem = (float64(totalItemsProcessed) / float64(totalCustsServed))
-			outputText += "\n\n---------------------------------------------------"
-			outputText += "\n\nTotal Customers Served: " + strconv.Itoa(totalCustsServed)
-			outputText += "\nTotal Customers Lost: " +  strconv.Itoa(custsLost)
-			outputText += "\n\nTotal Items Processed: " + strconv.Itoa(totalItemsProcessed)
-			outputText += "\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'f', 2, 32)
-			outputText += "\n\nSim RunTime: " + simRunTime.Truncate(time.Second).String()
-			
-			
-
-			outputText += "\n\nManager Name: " + mrManager.name 
-			outputText += "\nItem Limit: " + strconv.Itoa(mrManager.itemLimit) 
-			
-			
-			
-			outputLabel.SetText(outputText)
+			outputLabel := widget.NewLabel(postProcesses())
 			cd1 := widget.NewCard("Output Info", "", outputLabel)
 			scrllCont := widget.NewScrollContainer(cd1)
 			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
-
 			window.SetContent(content2)
 		}
 	})
 
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
-		label01, entry01, label02, entry02, label03, entry03, label04, entry04, label05, entry05, label06, entry06, label07, entry07,
+		label01, entry01, label02, entry02, label03, entry03, label04, entry04, label05, entry05, label06, entry06, label07, entry07, label08, entry08,
 		labelfiller01, labelfiller02,
 		checkbox01, checkbox02,
 		labelfiller03, labelfiller04,
@@ -266,6 +230,98 @@ func gui() {
 	window.Resize(fyne.NewSize(300,300))
 	window.ShowAndRun()
 
+}
+
+func postProcesses() string{
+	totalCusts := 0
+	tillUseTime := 0 * time.Microsecond
+	tillOpenTime := 0 * time.Microsecond
+	waitTime := 0 * time.Microsecond
+	runningUtilization := 0.0
+	output := ""
+
+	output += ("**********\nSIM REPORT\n**********")
+	output += ("\nINDIVIDUAL TILLS:\n")
+
+	for _, till := range tills {
+		output += ("\nTILL" + strconv.Itoa(till.id) + "")
+		if !till.open {
+			output += ("\nTILL CLOSED")
+			continue
+		}
+		if till.operator == nil {
+			output += ("\nNO OPERATOR ASSIGNED")
+			continue
+		}
+
+		if till.itemLimit < math.MaxInt32 {
+			output += ("\n__________________________")
+			output += ("\n" + strconv.Itoa(till.itemLimit) + "item limit on this till")
+			output += ("\n‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾")
+		}
+
+		totalCusts += till.customersServed
+		totalItemsProcessed += till.itemsProcessed
+		open := time.Duration(till.endTime.Sub(till.startTime))
+		tillOpenTime += open
+		tillUseTime += till.totalScanTime
+		waitTime += till.totalQueueWait
+		utilization := (float64(till.totalScanTime) / float64(open)) * 100.0
+		runningUtilization += utilization
+		meanItems := float64(till.itemsProcessed) / float64(till.customersServed)
+		meanWait := time.Duration(0)
+		if math.IsNaN(meanItems) {
+			meanItems = 0.0
+		}
+		if till.customersServed > 0 {
+			meanWait = time.Duration(float64(till.totalQueueWait*1_000) / float64(till.customersServed)).Truncate(time.Second)
+		}
+
+		output += ("\n Time Open: " + (open * 1_000).Truncate(time.Second).String())
+		output += ("\n Total Scanning: " + (till.totalScanTime * 1_000).Truncate(time.Second).String())
+		output += ("\n Customers Served: " + strconv.Itoa(till.customersServed))
+		output += ("\n Items Processed: " + strconv.Itoa(till.itemsProcessed))
+		output += ("\n Mean Items Per Customer: " + strconv.FormatFloat(meanItems,'f', 2, 32))
+		output += ("\n Utilization: " + strconv.FormatFloat(utilization,'f', 2, 32))
+		output += ("\n Mean Customer Wait Time: " + meanWait.String())
+		output += ("\n Total time waited by customers in queue: " + (till.totalQueueWait * 1_000).Truncate(time.Second).String() + "\n\n")
+
+		//if till.totalQueueWait > 0*time.Nanosecond {
+		//	output += ("  Total time waited by customers in queue:", (till.totalQueueWait * 1_000).Truncate(time.Second))
+		//} else {
+		//	output += ("  Total time waited by customers in queue: 0")
+		//}
+
+		//if till.totalQueueWait > 0*time.Nanosecond {
+		//	output += ("  Total time scanning:", (till.totalScanTime * 1_000).Truncate(time.Second))
+		//} else {
+		//	output += ("  Total time Scanning: 0")
+		//}
+		
+	}
+
+	divisor := checkoutsOpen
+	if numOperators < checkoutsOpen {
+		divisor = numOperators
+	}
+
+	totalTilUtil 		:= (float64(tillUseTime)/float64(tillOpenTime))*100.0
+	meanTilUtil 		:= runningUtilization/float64(divisor)
+	numItemsPerCust 	:= float64(totalItemsProcessed) / float64(totalCusts)
+
+	output += ("\n\nTOTALS:")
+	output += ("\n Total Customers Served: " + strconv.Itoa(totalCusts))
+	output += ("\n Total Customers Lost: " + strconv.Itoa(custsLost))
+	output += ("\n Total Items Processed: " + strconv.Itoa(totalItemsProcessed))
+	output += ("\n Mean Number Items per Customer: " + strconv.FormatFloat(numItemsPerCust, 'f', 2, 32))
+	output += ("\n Total Till Utilization: " + strconv.FormatFloat(totalTilUtil, 'f', 2, 32))
+	output += ("\n Mean Till Utilization: " + strconv.FormatFloat(meanTilUtil, 'f', 2, 32))
+	output += ("\n Mean Customer Wait Time: " + time.Duration(float64(waitTime*1_000)/float64(totalCusts)).Truncate(time.Second).String())
+	output += ("\n Store Processed a customer every: " + time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)).Truncate(time.Second).String())
+
+	output += ("\n\nSim RunTime: " +  simRunTime.String())
+
+	return output
 }
 
 func runSim() int {
@@ -312,7 +368,7 @@ func runSim() int {
 		mrManager.sortOperators()
 	}
 
-	for i := 0; i < numCheckouts; i++ {
+	for i := 0; i < len(ops); i++ {
 		if tills[i].open {
 			tills[i].operator = ops[i]
 			wg.Add(1)
@@ -348,6 +404,7 @@ func runSim() int {
 						check.operator.scan(c)
 						check.totalQueueWait += c.timeInQueue
 						check.totalScanTime += c.timeAtTill
+						check.itemsProcessed += c.items
 						check.customersServed++
 						check.itemsProcessed += c.items
 					}
@@ -397,4 +454,5 @@ func main() {
 
 	gui()
 
+	
 }
