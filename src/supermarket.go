@@ -296,7 +296,7 @@ func runSim() int {
 			}
 		} else {
 
-			tills[i] = &checkout{nil, &queue{q}, i + 1, maxItem, 0, 0, 0, time.Time{}, time.Time{}, true, 0, 0, 0.0, 0.0, 0.0, 0}
+			tills[i] = &checkout{nil, &queue{q}, i + 1, maxItem, 0, 0, 0, time.Time{}, time.Time{}, false, 0, 0, 0.0, 0.0, 0.0, 0}
 
 		}
 
@@ -305,18 +305,18 @@ func runSim() int {
 	//checkout operator setup
 	for i := range ops {
 		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime) + int(minScanTime+1)))}
-
-		if i < numCheckouts {
-			if tills[i].open {
-				tills[i].operator = ops[i]
-				wg.Add(1)
-			}
-		}
 	}
 
 	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
 	if mrManager.isSmart {
 		mrManager.sortOperators()
+	}
+
+	for i := 0; i < numCheckouts; i++ {
+		if tills[i].open {
+			tills[i].operator = ops[i]
+			wg.Add(1)
+		}
 	}
 
 	//create customers and send them to the cust channel
