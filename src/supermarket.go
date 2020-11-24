@@ -125,6 +125,7 @@ func (op *operator) scan(cust *customer) {
 		time.Sleep(op.scanTime)
 	}
 	cust.timeAtTill = time.Since(start)
+	servedCusts <- cust
 }
 
 //GLOBALS
@@ -164,6 +165,7 @@ var mutex = &sync.Mutex{}
 var tills = make([]*checkout, numCheckouts)
 var ops = make([]*operator, numOperators)
 var custs = make(chan *customer, numCusts)
+var servedCusts = make(chan *customer, numCusts)
 var mrManager manager
 
 var wg = &sync.WaitGroup{}
@@ -293,7 +295,10 @@ SpawnLoop:
 		close(till.queue.customers)
 	}
 	wg.Wait()
+
 	simRunTime := time.Since(simStart)
+
+	close(servedCusts)
 	fmt.Println()
 	totalCusts := 0
 	tillUseTime := 0 * time.Microsecond
@@ -385,4 +390,20 @@ SpawnLoop:
 	fmt.Println(" Store Processed a customer every:", time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)).Truncate(time.Second))
 
 	fmt.Println("\n\nSim RunTime:", simRunTime)
+
+	fmt.Println("\n\nCUSTOMER INFO:")
+
+	servedCustsArr := make([]*customer, totalCusts)
+	idx := 0
+	for i := range servedCusts {
+		servedCustsArr[idx] = i
+		idx++
+	}
+
+	for j, cust := range servedCustsArr {
+		fmt.Println("\nCustomer:", j+1)
+		fmt.Println(" Items in Trolley:", cust.items)
+		fmt.Println(" Time in Queue   :", (cust.timeInQueue * 1_000))
+		fmt.Println(" Time at Till    :", (cust.timeAtTill * 1_000))
+	}
 }
