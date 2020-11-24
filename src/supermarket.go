@@ -266,6 +266,20 @@ func gui() {
 	window.SetContent(content)
 	//window.Resize(fyne.NewSize(380, 320))
 	window.ShowAndRun()
+
+}
+func gui2(a fyne.App) {
+	// time.Sleep(time.Second * 20)
+	window2 := a.NewWindow("Supermarket simulator results")
+
+	label08 := widget.NewLabel("Total Customers Served:" + strconv.Itoa(20))
+	label09 := widget.NewLabel("Total Customers lost:" + strconv.Itoa(20))
+	//label10 := widget.NewLabel("Sim run time:" + strconv.Itoa(simRunTime.Truncate(time.Second)))
+	label11 := widget.NewLabel("Total Items:" + strconv.Itoa(totalItemsProcessed))
+	content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(2),
+		label08, label09, label11)
+	window2.SetContent(content2)
+	window2.Show()
 }
 
 func runSim() int{
