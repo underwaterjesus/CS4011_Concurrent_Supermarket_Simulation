@@ -128,7 +128,7 @@ func (op *operator) scan(cust *customer) {
 }
 
 //Getting value at index of anything
-func valueAtIndexOf(arr [5]float64, x int) float64 {
+func valueAtIndexOfFloatArray(arr [5]float64, x int) float64 {
 	for c := 0; c < len(arr); c++ {
 		if float64(c) == float64(x) {
 			return arr[c]
@@ -165,9 +165,9 @@ func SliceIndex(limit int, predicate func(i int) bool) int {
 const maxItem = 2147483647
 
 //Array of strings not implemented yet
+var setWeather = 1 // Change from 0 - 4 to see changes in customerArrival Rate
 var weatherStrings = [5]string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
 var weatherScale = [5]float64{0.4, 0.8, 1, 1.2, 0.6}
-var setWeather = 0 // Change from 0 - 4 to see changes in customerArrival Rate
 
 //setting user input to Mild => 2 => 1
 var weatherConditions weather
@@ -212,11 +212,9 @@ func main() {
 	mrManager.isSmart = true
 	mrManager.isQuikCheck = true
 
-	//WEATHER BITS
-	indexOfWeatherScale := valueAtIndexOf(weatherScale, setWeather)
-	indexOfWeatherScale = math.Abs(indexOfWeatherScale) //sometimes returns negative values
-	custArrivalRate = (time.Duration(convertWeatherScale(custArrivalRate, indexOfWeatherScale)) * time.Microsecond * 1000)
-	fmt.Println("Customer arrival rate:", custArrivalRate)
+	//Modify the customer arrival rate based on the weather
+	custArrivalRate = time.Duration(float64(custArrivalRate) * float64(weatherScale[setWeather]))
+	fmt.Println(custArrivalRate)
 
 	//checkout setup
 	for i := range tills {
@@ -335,6 +333,9 @@ SpawnLoop:
 	tillOpenTime := 0 * time.Microsecond
 	waitTime := 0 * time.Microsecond
 	runningUtilization := 0.0
+	weatherToday := weatherStrings[setWeather]
+	fmt.Printf("The weather today is %s !\n", weatherToday)
+	fmt.Println("Customer arrival rate:", custArrivalRate)
 
 	fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
 	if smartCusts {
