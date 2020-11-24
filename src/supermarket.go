@@ -183,14 +183,22 @@ func gui() {
 	labelfiller04 := widget.NewLabel("")
 	labelfiller05 := widget.NewLabel("")
 	entry01 := widget.NewEntry()
+	entry01.SetPlaceHolder("---") 
 	entry02 := widget.NewEntry()
+	entry02.SetPlaceHolder("---") 
 	entry03 := widget.NewEntry()
+	entry03.SetPlaceHolder("---") 
 	entry04 := widget.NewEntry()
+	entry04.SetPlaceHolder("---") 
 	entry05 := widget.NewEntry()
+	entry05.SetPlaceHolder("---") 
 	entry06 := widget.NewEntry()
+	entry06.SetPlaceHolder("---") 
 	entry07 := widget.NewEntry()
+	entry07.SetPlaceHolder("---") 
 	entry08 := widget.NewEntry()
-
+	entry08.SetPlaceHolder("---") 
+	
 	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
 		smartManager = value
 	})
@@ -210,13 +218,35 @@ func gui() {
 
 		if runSim() == 1 {
 
-			outputLabel := widget.NewLabel(postProcesses())
-			cd1 := widget.NewCard("Output Info", "", outputLabel)
-			scrllCont := widget.NewScrollContainer(cd1)
-			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
-			window.SetContent(content2)
+			optionLabel := widget.NewLabel("Choose!")
+
+
+			tillButton := widget.NewButton("Till Info", func(){
+
+				custButton := widget.NewButton("Customer Info", func(){
+					custLabel := widget.NewLabel("cust info")
+					cd2 := widget.NewCard("Cust Info", "", custLabel)
+					custScrllCont := widget.NewScrollContainer(cd2,)
+					content3 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), custScrllCont, backButton)
+					window.SetContent(content3)
+				})
+			
+				outputLabel := widget.NewLabel(postProcesses())
+				cd1 := widget.NewCard("Output Info", "", outputLabel)
+				scrllCont := widget.NewScrollContainer(cd1,)
+				content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(2), scrllCont, custButton)
+
+				window.SetContent(content2)
+			})
+
+
+			menu:= fyne.NewContainerWithLayout(layout.NewGridLayout(2), optionLabel, tillButton)
+
+			window.SetContent(menu)
 		}
+		
 	})
+	
 
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
 		label01, entry01, label02, entry02, label03, entry03, label04, entry04, label05, entry05, label06, entry06, label07, entry07, label08, entry08,
@@ -227,7 +257,7 @@ func gui() {
 	)
 
 	window.SetContent(content)
-	window.Resize(fyne.NewSize(300,300))
+	window.Resize(fyne.Size{500,600})
 	window.ShowAndRun()
 
 }
