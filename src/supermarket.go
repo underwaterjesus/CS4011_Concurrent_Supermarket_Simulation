@@ -130,7 +130,7 @@ const maxItem = 2147483647
 var scale int64 = 1000
 var numCheckouts = 8
 var checkoutsOpen = 8
-var numOperators = 8
+var numOperators = 7
 var numCusts = 200
 var custsLost = 0
 var minItems = 1
@@ -166,7 +166,7 @@ func main() {
 	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen / 2))
 	mrManager.itemLimit = 5
 	mrManager.isSmart = true
-	mrManager.isQuikCheck = false
+	mrManager.isQuikCheck = true
 
 	//checkout setup
 	for i := range tills {
@@ -302,6 +302,12 @@ SpawnLoop:
 		if till.operator == nil {
 			fmt.Println("NO OPERATOR ASSIGNED")
 			continue
+		}
+
+		if till.itemLimit < math.MaxInt32 {
+			fmt.Println("__________________________")
+			fmt.Println(till.itemLimit, "item limit on this till")
+			fmt.Println("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾")
 		}
 
 		totalCusts += till.customersServed
