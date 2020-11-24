@@ -127,39 +127,6 @@ func (op *operator) scan(cust *customer) {
 	cust.timeAtTill = time.Since(start)
 }
 
-//Getting value at index of anything
-func valueAtIndexOfFloatArray(arr [5]float64, x int) float64 {
-	for c := 0; c < len(arr); c++ {
-		if float64(c) == float64(x) {
-			return arr[c]
-		}
-	}
-	return -1
-}
-
-//Operating on the values in the weatherScale array
-func convertWeatherScale(custArrivalRate time.Duration, factor float64) float64 {
-	custArrivalRate /= time.Microsecond
-	defaultOutput := float64(custArrivalRate)
-	if factor != 1 {
-		defaultOutput *= factor
-		return defaultOutput
-	} else {
-		return defaultOutput
-	}
-}
-
-//get index of String array, implementation: SliceIndex(len(arr), func(i int) bool { return arr[i] == "Z" })
-//NOT IMPLEMENTED UNTIL GUI
-func SliceIndex(limit int, predicate func(i int) bool) int {
-	for i := 0; i < limit; i++ {
-		if predicate(i) {
-			return i
-		}
-	}
-	return -1
-}
-
 //GLOBALS
 //seconds scaled to microseconds(1e-6 seconds)
 const maxItem = 2147483647
