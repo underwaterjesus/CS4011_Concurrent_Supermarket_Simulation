@@ -197,7 +197,9 @@ func gui() {
 		minItems, _ = strconv.Atoi(entry05.Text)
 		maxItems, _ = strconv.Atoi(entry06.Text)
 		maxQueueLength, _ = strconv.Atoi(entry07.Text)
+		go gui2(app)
 		window.Close()
+
 	})
 	content := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
 		label01,
@@ -223,6 +225,20 @@ func gui() {
 	window.SetContent(content)
 	//window.Resize(fyne.NewSize(380, 320))
 	window.ShowAndRun()
+
+}
+func gui2(a fyne.App) {
+	// time.Sleep(time.Second * 20)
+	window2 := a.NewWindow("Supermarket simulator results")
+
+	label08 := widget.NewLabel("Total Customers Served:" + strconv.Itoa(20))
+	label09 := widget.NewLabel("Total Customers lost:" + strconv.Itoa(20))
+	//label10 := widget.NewLabel("Sim run time:" + strconv.Itoa(simRunTime.Truncate(time.Second)))
+	label11 := widget.NewLabel("Total Items:" + strconv.Itoa(totalItemsProcessed))
+	content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(2),
+		label08, label09, label11)
+	window2.SetContent(content2)
+	window2.Show()
 }
 func main() {
 
@@ -377,15 +393,4 @@ SpawnLoop:
 	fmt.Println("Total Items Processed:", totalItemsProcessed)
 	fmt.Println("Mean Average Item per customer", (float32(totalItemsProcessed) / float32(totalCusts)))
 
-	// app := app.New()
-	// window2 := app.NewWindow("Supermarket simulator results")
-
-	// label08 := widget.NewLabel("Total Customers Served:" + strconv.Itoa(totalCusts))
-	// label09 := widget.NewLabel("Total Customers lost:" + strconv.Itoa(totalCusts))
-	// //label10 := widget.NewLabel("Sim run time:" + strconv.Itoa(simRunTime.Truncate(time.Second)))
-	// label11 := widget.NewLabel("Total Items:" + strconv.Itoa(totalItemsProcessed))
-	// content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(4),
-	// 	label08, label09, label11)
-	// window2.SetContent(content2)
-	// window2.ShowAndRun()
 }
