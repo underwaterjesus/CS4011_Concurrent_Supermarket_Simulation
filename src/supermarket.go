@@ -234,34 +234,25 @@ func gui() {
 
 			}
 
+			avgItem = (float64(totalItemsProcessed) / float64(totalCustsServed))
 			output += "\n\nTotal Customers Served: " + strconv.Itoa(totalCustsServed)
 			output += "\nTotal Customers Lost: " +  strconv.Itoa(custsLost)
 			output += "\n\nSim RunTime: " + simRunTime.Truncate(time.Second).String()
 			output += "\n\nTotal Items Processed: " + strconv.Itoa(totalItemsProcessed)
-			avgItem = (float64(totalItemsProcessed) / float64(totalCustsServed))
-			output += "\n\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'E', -1, 32)
+			output += "\n\nMean Average Item per customer: " + strconv.FormatFloat(avgItem,'f', 2, 32)
 
 			
 			label08.SetText(output)
-
 			cd1 := widget.NewCard("Output Info", "", label08)
 			scrllCont := widget.NewScrollContainer(cd1)
-
 			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
 
 			window.SetContent(content2)
 		}
-		//window.Close()
 	})
 
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
-		label01, entry01,
-		label02, entry02,
-		label03, entry03,
-		label04, entry04,
-		label05, entry05,
-		label06, entry06,
-		label07, entry07,
+		label01, entry01, label02, entry02, label03, entry03, label04, entry04, label05, entry05, label06, entry06, label07, entry07,
 		labelfiller01, labelfiller02,
 		checkbox01, checkbox02,
 		labelfiller03, labelfiller04,
@@ -282,8 +273,6 @@ func runSim() int {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	//This seems like an appropriate place for the time mark,
-	//like when the manager first opens the door to the market at the start of the day.
 	mrManager.name = "Mr. Manager"
 	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen / 2))
 	mrManager.itemLimit = 5
@@ -358,10 +347,6 @@ func runSim() int {
 						check.totalScanTime += c.timeAtTill
 						check.customersServed++
 						check.itemsProcessed += c.items
-						//fmt.Println("\nTill", check.id, "serving its", check.customersServed, "customer, who has", c.items, "items:", &c,
-						//	"\nTime spent at till:", c.timeAtTill, "Time in queue:", c.timeInQueue)
-						//fmt.Println("Average wait time in queue", check.id, "=", time.Duration(int64(check.totalQueueWait)/int64(check.customersServed)))
-						//fmt.Println("Currently", check.numInQ, "in queue", check.id)
 					}
 				}
 			}(till, wg)
@@ -382,7 +367,6 @@ SpawnLoop:
 				}
 				if !c.joinQue(tills, c.items) {
 					custsLost++
-					//fmt.Println("A customer left")
 				}
 
 			default:
@@ -402,9 +386,6 @@ SpawnLoop:
 	simRunTime = time.Since(simStart)
 	fmt.Println()
 	totalCustsServed = 0
-
-	//output :="\nTotal Customers Served:" + strconv.Itoa(totalCustsServed)
-	//+"\nTotal Customers Lost  :"+custsLost+"\nSim RunTime"+simRunTime.Truncate(time.Second)+"Total Items Processed:"+totalItemsProcessed+"Mean Average Item per customer"+float32(totalItemsProcessed) / float32(totalCusts)
 
 	return 1
 }
