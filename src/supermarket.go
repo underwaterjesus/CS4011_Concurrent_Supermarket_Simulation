@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -228,21 +229,17 @@ func gui() {
 	checkbox03 := widget.NewCheck("Item Limit Tills?", func(value bool) {
 		isItemLimit = value
 	})
-	radio := widget.NewRadio([]string{"0.10%", "0.25%", "0.50%"}, func(value string) {
-		if value == "0.10%" {
+	radio := widget.NewRadio([]string{"10%", "25%", "50%"}, func(value string) {
+		if strings.Compare(value,"10%")==0 {
 			limitedCheckoutRate = 10
 		}
-		if value == "0.25%" {
+		if strings.Compare(value,"25%")==0 {
 			limitedCheckoutRate = 4
 		}
-		if value == "0.50%" {
+		if strings.Compare(value,"50%")==0 {
 			limitedCheckoutRate = 2
-		} else {
-			limitedCheckoutRate = 0
 		}	
 	})
-
-
 	button01 := widget.NewButton("Begin simulation", func() {
 		numCheckouts, _ = strconv.Atoi(entry01.Text)
 		checkoutsOpen, _ = strconv.Atoi(entry02.Text)
@@ -254,7 +251,6 @@ func gui() {
 		managerItemLimit, _ = strconv.Atoi(entry08.Text)
 
 		if runSim() == 1 {
-
 			outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
 			outputLabel.Wrapping = fyne.TextWrapOff
 			cd1 := widget.NewCard("SIMULATION REPORT", "", outputLabel)
@@ -265,7 +261,6 @@ func gui() {
 		
 	})
 	
-
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
 		labelfiller, labelfiller,
 		label01, entry01, 
@@ -399,11 +394,12 @@ func runSim() int {
 	if(isItemLimit && limitedCheckoutRate>0){
 		if checkoutsOpen % 2 == 0{
 			num = checkoutsOpen / limitedCheckoutRate
-			if num < 0 {num = 1}
+			if num <= 0 {num = 1}
+			fmt.Println("num:",num)
 			mrManager.cappedCheckRate = num
 		}else{
 			num = checkoutsOpen-1 / limitedCheckoutRate
-			if num < 0 {num = 1}
+			if num <+ 0 {num = 1}
 			mrManager.cappedCheckRate = num
 		}
 	}else{
