@@ -395,11 +395,16 @@ func runSim() int {
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 	mrManager.name = "Mr. Manager"
+	var num int
 	if(isItemLimit && limitedCheckoutRate>0){
 		if checkoutsOpen % 2 == 0{
-			mrManager.cappedCheckRate = checkoutsOpen / limitedCheckoutRate
+			num = checkoutsOpen / limitedCheckoutRate
+			if num < 0 {num = 1}
+			mrManager.cappedCheckRate = num
 		}else{
-			mrManager.cappedCheckRate = checkoutsOpen-1 / limitedCheckoutRate
+			num = checkoutsOpen-1 / limitedCheckoutRate
+			if num < 0 {num = 1}
+			mrManager.cappedCheckRate = num
 		}
 	}else{
 		mrManager.cappedCheckRate = 0
