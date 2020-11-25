@@ -200,7 +200,6 @@ func gui() {
 	label07 := widget.NewLabel("Max Queue Length:")
 	label08 := widget.NewLabel("Manager Checkout Item Limit:")
 	label09 := widget.NewLabel("Item Limited Till Rate:")
-
 	labelfiller := widget.NewLabel("")
 	
 	entry01 := widget.NewEntry()
@@ -262,7 +261,6 @@ func gui() {
 	})
 	
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
-		labelfiller, labelfiller,
 		label01, entry01, 
 		label02, entry02, 
 		label03, entry03, 
