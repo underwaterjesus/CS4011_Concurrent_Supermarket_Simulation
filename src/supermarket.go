@@ -19,7 +19,7 @@ import (
 //STRUCTS
 type customer struct {
 	items       int
-	queue		string
+	queue       string
 	enterQAt    time.Time
 	patience    time.Duration
 	timeAtTill  time.Duration
@@ -39,7 +39,7 @@ type manager struct {
 	cappedCheckRate int
 	itemLimit       int
 	isSmart         bool
-	isQuikCheck     bool
+	isItemLimit     bool
 }
 
 type checkout struct {
@@ -84,7 +84,7 @@ func (a byScanTime) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a byScanTime) Less(i, j int) bool { return int(a[i].scanTime) < int(a[j].scanTime) }
 
 //RECEIVER FUNCTIONS
-func (cust *customer) joinQue(tills []*checkout, items int) bool {
+func (cust *customer) joinQue(tills []*checkout) bool {
 
 	if smartCusts {
 		mutex.Lock()
@@ -93,7 +93,7 @@ func (cust *customer) joinQue(tills []*checkout, items int) bool {
 	}
 
 	for _, till := range tills {
-		if till.open && till.operator != nil && items < till.itemLimit {
+		if till.open && till.operator != nil && cust.items < till.itemLimit {
 			select {
 			case till.queue.customers <- cust:
 				cust.enterQAt = time.Now()
@@ -163,8 +163,10 @@ var minItems int
 var maxItems int
 var maxQueueLength int
 var managerItemLimit int
+var limitedCheckoutRate int
 var smartCusts bool
 var smartManager bool
+var isItemLimit bool
 var minScanTime time.Duration = 3 * time.Microsecond
 var maxScanTime time.Duration = 10 * time.Microsecond
 var simRunTime time.Duration
@@ -196,12 +198,10 @@ func gui() {
 	label06 := widget.NewLabel("Maximum Items:")
 	label07 := widget.NewLabel("Max Queue Length:")
 	label08 := widget.NewLabel("Manager Checkout Item Limit:")
+	label09 := widget.NewLabel("Item Limited Till Rate:")
 
-	labelfiller01 := widget.NewLabel("")
-	labelfiller02 := widget.NewLabel("")
-	labelfiller03 := widget.NewLabel("")
-	labelfiller04 := widget.NewLabel("")
-	labelfiller05 := widget.NewLabel("")
+	labelfiller := widget.NewLabel("")
+	
 	entry01 := widget.NewEntry()
 	entry01.SetPlaceHolder("---") 
 	entry02 := widget.NewEntry()
@@ -225,6 +225,23 @@ func gui() {
 	checkbox02 := widget.NewCheck("Smart Customers", func(value bool) {
 		smartCusts = value
 	})
+	checkbox03 := widget.NewCheck("Item Limit Tills?", func(value bool) {
+		isItemLimit = value
+	})
+	radio := widget.NewRadio([]string{"0.10%", "0.25%", "0.50%"}, func(value string) {
+		if value == "0.10%" {
+			limitedCheckoutRate = 10
+		}
+		if value == "0.25%" {
+			limitedCheckoutRate = 4
+		}
+		if value == "0.50%" {
+			limitedCheckoutRate = 2
+		} else {
+			limitedCheckoutRate = 0
+		}	
+	})
+
 
 	button01 := widget.NewButton("Begin simulation", func() {
 		numCheckouts, _ = strconv.Atoi(entry01.Text)
@@ -250,11 +267,24 @@ func gui() {
 	
 
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
-		label01, entry01, label02, entry02, label03, entry03, label04, entry04, label05, entry05, label06, entry06, label07, entry07, label08, entry08,
-		labelfiller01, labelfiller02,
-		checkbox01, checkbox02,
-		labelfiller03, labelfiller04,
-		labelfiller05, button01,
+		labelfiller, labelfiller,
+		label01, entry01, 
+		label02, entry02, 
+		label03, entry03, 
+		label04, entry04, 
+		label05, entry05, 
+		label06, entry06, 
+		label07, entry07, 
+		label08, entry08,
+		labelfiller, labelfiller,
+		labelfiller, checkbox03,
+		labelfiller, label09,
+		labelfiller, radio,
+		labelfiller, labelfiller,
+		labelfiller, checkbox01, 
+		labelfiller, checkbox02,
+		labelfiller, labelfiller,
+		labelfiller, button01,
 	)
 
 	window.SetContent(content)
@@ -268,6 +298,7 @@ func postProcesses() string {
 		sort.Sort(byTillID(tills))
 	}
 
+	totalCustsServed = 0
 	totalCusts := 0
 	tillUseTime := 0 * time.Microsecond
 	tillOpenTime := 0 * time.Microsecond
@@ -360,13 +391,22 @@ func runSim() int {
 	ops = make([]*operator, numOperators)
 	custs = make(chan *customer, numCusts)
 	servedCusts = make(chan *customer, numCusts)
+
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 	mrManager.name = "Mr. Manager"
-	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen / 2))
+	if(isItemLimit && limitedCheckoutRate>0){
+		if checkoutsOpen % 2 == 0{
+			mrManager.cappedCheckRate = checkoutsOpen / limitedCheckoutRate
+		}else{
+			mrManager.cappedCheckRate = checkoutsOpen-1 / limitedCheckoutRate
+		}
+	}else{
+		mrManager.cappedCheckRate = 0
+	}
 	mrManager.itemLimit = managerItemLimit
 	mrManager.isSmart = smartManager
-	mrManager.isQuikCheck = true
+	mrManager.isItemLimit = isItemLimit
 
 	//Modify the customer arrival rate based on the weather
 	custArrivalRate = time.Duration(float64(custArrivalRate) * float64(weatherScale[setWeather]))
@@ -410,7 +450,7 @@ func runSim() int {
 
 	//create customers and send them to the cust channel
 	for i := 0; i < cap(custs); i++ {
-		custs <- &customer{(rand.Intn(maxItems-minItems) + minItems + 1), "0", time.Now(), 0, 0, time.Second}
+		custs <- &customer{(rand.Intn((maxItems-minItems)+1) + minItems), "0", time.Now(), 0, 0, time.Second}
 	}
 
 	//process customers at tills.
@@ -420,7 +460,6 @@ func runSim() int {
 			go func(check *checkout, wg *sync.WaitGroup) {
 				defer func() {
 					wg.Done()
-					check.endTime = time.Now()
 				}()
 				check.startTime = time.Now()
 			Spin:
@@ -458,7 +497,7 @@ SpawnLoop:
 				if !ok {
 					break SpawnLoop
 				}
-				if !c.joinQue(tills, c.items) {
+				if !c.joinQue(tills) {
 					custsLost++
 				}
 
@@ -476,10 +515,14 @@ SpawnLoop:
 		close(till.queue.customers)
 	}
 	wg.Wait()
+
+	for _, till := range tills {
+		till.endTime = time.Now()
+	}
+	
 	simRunTime = time.Since(simStart)
 	close(servedCusts)
-	fmt.Println()
-	totalCustsServed = 0
+	
 
 	return 1
 }
