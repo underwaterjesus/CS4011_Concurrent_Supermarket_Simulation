@@ -395,7 +395,6 @@ func runSim() int {
 		if checkoutsOpen % 2 == 0{
 			num = checkoutsOpen / limitedCheckoutRate
 			if num <= 0 {num = 1}
-			fmt.Println("num:",num)
 			mrManager.cappedCheckRate = num
 		}else{
 			num = checkoutsOpen-1 / limitedCheckoutRate
