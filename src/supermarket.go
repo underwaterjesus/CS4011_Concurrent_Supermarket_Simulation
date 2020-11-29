@@ -147,8 +147,8 @@ const maxItem = 2147483647
 
 //Array of strings not implemented yet
 var setWeather = 1 // Change from 0 - 4 to see changes in customerArrival Rate
-var weatherStrings = [5]string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
-var weatherScale = [5]float64{0.4, 0.8, 1, 1.2, 0.6}
+var weatherStrings = []string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
+var weatherScale float64
 
 //setting user input to Mild => 2 => 1
 var weatherConditions weather
@@ -168,8 +168,10 @@ var limitedCheckoutRate int
 var smartCusts bool
 var smartManager bool
 var isItemLimit bool
-var minScanTime time.Duration = 3 * time.Microsecond
-var maxScanTime time.Duration = 10 * time.Microsecond
+var minST float64
+var maxST float64
+var minScanTime time.Duration = time.Duration(minST * float64(time.Microsecond))
+var maxScanTime time.Duration = time.Duration(maxST * float64(time.Microsecond))
 var simRunTime time.Duration
 var custArrivalRate time.Duration = 180 * time.Microsecond //5mins scaled secs->microsecs
 var totalItemsProcessed = 0
@@ -200,7 +202,35 @@ func gui() {
 	label07 := widget.NewLabel("Max Queue Length:")
 	label08 := widget.NewLabel("Manager Checkout Item Limit:")
 	label09 := widget.NewLabel("Item Limited Till Rate:")
+	label10 := widget.NewLabel("Min Scan Time:")
+	label11 := widget.NewLabel("Max Scan Time:")
 	labelfiller := widget.NewLabel("")
+	selectWeather := widget.NewSelect(weatherStrings, func(selected string){
+		//{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
+		//{0.4, 0.8, 1, 1.2, 0.6}
+		if selected == "Stormy" {
+		
+			weatherScale = 0.4
+
+		}else if selected == "Rainy" {
+
+			weatherScale = 0.8
+		
+		}else if selected == "Sunny" {
+
+			weatherScale = 1.2
+
+		}else if selected == "Heatwave" {
+		
+			weatherScale = 0.6
+		
+		}else{
+
+			weatherScale = 1.0
+
+		}
+		
+	})
 	
 	entry01 := widget.NewEntry()
 	entry01.SetPlaceHolder("---") 
@@ -218,6 +248,10 @@ func gui() {
 	entry07.SetPlaceHolder("---") 
 	entry08 := widget.NewEntry()
 	entry08.SetPlaceHolder("---") 
+	entry09 := widget.NewEntry()
+	entry09.SetPlaceHolder("---")
+	entry10 := widget.NewEntry()
+	entry10.SetPlaceHolder("---")
 	
 	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
 		smartManager = value
@@ -240,6 +274,7 @@ func gui() {
 		}	
 	})
 	button01 := widget.NewButton("Begin simulation", func() {
+
 		numCheckouts, _ = strconv.Atoi(entry01.Text)
 		checkoutsOpen, _ = strconv.Atoi(entry02.Text)
 		numOperators, _ = strconv.Atoi(entry03.Text)
@@ -248,6 +283,9 @@ func gui() {
 		maxItems, _ = strconv.Atoi(entry06.Text)
 		maxQueueLength, _ = strconv.Atoi(entry07.Text)
 		managerItemLimit, _ = strconv.Atoi(entry08.Text)
+		minST, _ = strconv.ParseFloat(entry09.Text, 64)
+		maxST, _ = strconv.ParseFloat(entry10.Text, 64)
+
 
 		if runSim() == 1 {
 			outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
@@ -269,6 +307,9 @@ func gui() {
 		label06, entry06, 
 		label07, entry07, 
 		label08, entry08,
+		label10, entry09,
+		label11, entry10,
+		selectWeather, labelfiller,
 		labelfiller, labelfiller,
 		labelfiller, checkbox03,
 		labelfiller, label09,
@@ -407,7 +448,7 @@ func runSim() int {
 	mrManager.isItemLimit = isItemLimit
 
 	//Modify the customer arrival rate based on the weather
-	custArrivalRate = time.Duration(float64(custArrivalRate) * float64(weatherScale[setWeather]))
+	custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
 
 	//checkout setup
 	for i := range tills {
