@@ -225,9 +225,9 @@ func gui() {
 	entry06 := widget.NewEntry()
 	entry06.SetPlaceHolder("- - Positive Integer expected (1-200) - -")
 	entry07 := widget.NewEntry()
-	entry07.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
+	entry07.SetPlaceHolder("- - Positive Integer expected (1-6) - -")
 	entry08 := widget.NewEntry()
-	entry08.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
+	entry08.SetPlaceHolder("- - Positive Integer expected (0(none)-20) - -")
 	entry09 := widget.NewEntry()
 	entry09.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
 	entry10 := widget.NewEntry()
@@ -256,38 +256,151 @@ func gui() {
 		}
 	})
 	button01 := widget.NewButton("Begin simulation", func() {
-
-		numCheckouts, _ = strconv.Atoi(entry01.Text)
-		checkoutsOpen, _ = strconv.Atoi(entry02.Text)
-		numOperators, _ = strconv.Atoi(entry03.Text)
-		numCusts, _ = strconv.Atoi(entry04.Text)
-		minItems, _ = strconv.Atoi(entry05.Text)
-		maxItems, _ = strconv.Atoi(entry06.Text)
-		maxQueueLength, _ = strconv.Atoi(entry07.Text)
-		managerItemLimit, _ = strconv.Atoi(entry08.Text)
-		minST, _ = strconv.ParseFloat(entry09.Text, 64)
-		maxST, _ = strconv.ParseFloat(entry10.Text, 64)
-		minScanTime = time.Duration(minST * float64(time.Millisecond))
-		maxScanTime = time.Duration(maxST * float64(time.Millisecond))
-		arrivalRateScale, _ = strconv.ParseFloat(entry11.Text, 64)
-		custArrivalRate = time.Duration(float64(custArrivalRate) / arrivalRateScale)
-		//custArrivalRate = time.Duration(float64(custArrivalRate) / 60.0)
-		custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
-		
-
-
-
-		fmt.Println("Arr. Rate:", custArrivalRate)
-		fmt.Println("Scan times:", minScanTime, maxScanTime)
-		if runSim() == 1 {
-			outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
-			outputLabel.Wrapping = fyne.TextWrapOff
-			cd1 := widget.NewCard("SIMULATION REPORT", "", outputLabel)
-			scrllCont := widget.NewScrollContainer(cd1)
-			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
-			window.SetContent(content2)
+		var ok error
+		valid := true
+		errorString := ""
+		numCheckouts, ok = strconv.Atoi(entry01.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for checkout number")
+		} else {
+			if numCheckouts < 1 || numCheckouts > 8 {
+				valid = false
+				errorString += fmt.Sprintf("\nNumber of checkouts outside range")
+			}
+		}
+		checkoutsOpen, ok = strconv.Atoi(entry02.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for checkouts open")
+		} else {
+			if checkoutsOpen < 1 || checkoutsOpen > 8 {
+				valid = false
+				errorString += fmt.Sprintf("\nCheckouts open outside range")
+			}
+		}
+		numOperators, ok = strconv.Atoi(entry03.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for operator number")
+		} else {
+			if numOperators < 1 || numOperators > 8 {
+				valid = false
+				errorString += fmt.Sprintf("\nCheckout operators outside range")
+			}
+		}
+		numCusts, ok = strconv.Atoi(entry04.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for customer number")
+		} else {
+			if numCusts < 1 || numCusts > 200 {
+				valid = false
+				errorString += fmt.Sprintf("\nNumber of customers outside range")
+			}
+		}
+		minItems, ok = strconv.Atoi(entry05.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for item minimum")
+		} else {
+			if minItems < 1 || minItems > 200 {
+				valid = false
+				errorString += fmt.Sprintf("\nMin items out of range")
+			}
+		}
+		maxItems, ok = strconv.Atoi(entry06.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for item maximum")
+		} else {
+			if maxItems < 1 || maxItems > 200 {
+				valid = false
+				errorString += fmt.Sprintf("\nMax items out of range")
+			}
+		}
+		maxQueueLength, ok = strconv.Atoi(entry07.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for max queue length")
+		} else {
+			if maxQueueLength < 1 || maxQueueLength > 6 {
+				valid = false
+				errorString += fmt.Sprintf("\nMax queue length out of range")
+			}
+		}
+		managerItemLimit, ok = strconv.Atoi(entry08.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for manager item limit")
+		} else {
+			if managerItemLimit < 0 || managerItemLimit > 20 {
+				valid = false
+				errorString += fmt.Sprintf("\nItem limit outside of range")
+			}
+		}
+		minST, ok = strconv.ParseFloat(entry09.Text, 64)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for minimum scan time")
+		} else {
+			if minST < 0.5 || minST > 6.0 {
+				valid = false
+				errorString += fmt.Sprintf("\nMin scan time out of range")
+			}
+		}
+		maxST, ok = strconv.ParseFloat(entry10.Text, 64)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for maximum scan time")
+		} else {
+			if maxST < 0.5 || maxST > 6.0 {
+				valid = false
+				errorString += fmt.Sprintf("\nMax scan time out of range")
+			}
+		}
+		arrivalRateScale, ok = strconv.ParseFloat(entry11.Text, 64)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for arrival rate")
+		} else {
+			if arrivalRateScale < 1.0 || arrivalRateScale > 60.0 {
+				valid = false
+				errorString += fmt.Sprintf("\nCustomer arrival rate out of range")
+			}
 		}
 
+		if valid {
+			if minST > maxST {
+				valid = false
+				errorString += fmt.Sprintf("\nMin scan time is greater than max scan time")
+			}
+			if minItems > maxItems {
+				valid = false
+				errorString += fmt.Sprintf("\nMin items is greater than max items")
+			}
+			if checkoutsOpen > numCheckouts {
+				valid = false
+				errorString += fmt.Sprintf("\nCheckouts open is greater than number of checkouts")
+			}
+		}
+		if !valid {
+			fmt.Println(errorString) //ERROR WINDOW HERE
+		} else {
+			minScanTime = time.Duration(minST * float64(time.Millisecond))
+			maxScanTime = time.Duration(maxST * float64(time.Millisecond))
+			custArrivalRate = time.Duration(float64(custArrivalRate) / arrivalRateScale)
+			custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
+
+			if runSim() == 1 {
+				outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
+				outputLabel.Wrapping = fyne.TextWrapOff
+				cd1 := widget.NewCard("SIMULATION REPORT", "", outputLabel)
+				scrllCont := widget.NewScrollContainer(cd1)
+				content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
+				window.SetContent(content2)
+			}
+		}
 	})
 
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
