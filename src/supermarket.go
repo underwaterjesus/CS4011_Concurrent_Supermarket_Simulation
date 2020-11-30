@@ -161,7 +161,7 @@ var maxST float64
 var minScanTime time.Duration //= time.Duration(minST * float64(time.Microsecond))
 var maxScanTime time.Duration //= time.Duration(maxST * float64(time.Microsecond))
 var simRunTime time.Duration
-var custArrivalRate time.Duration = 60 * time.Microsecond
+var custArrivalRate time.Duration = 6000 * time.Microsecond
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
 
@@ -276,7 +276,7 @@ func gui() {
 		custArrivalRate = time.Duration(float64(custArrivalRate) / 1_000.0)
 		custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
 
-		fmt.Println("Arr. rate:", custArrivalRate, "- weatherScale", weatherScale)
+		//fmt.Println("Arr. rate:", custArrivalRate, "- weatherScale", weatherScale)
 		if runSim() == 1 {
 			outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
 			outputLabel.Wrapping = fyne.TextWrapOff
