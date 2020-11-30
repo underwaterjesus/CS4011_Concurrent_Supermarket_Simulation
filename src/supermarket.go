@@ -136,7 +136,6 @@ const maxItem = 2147483647
 var weatherStrings = []string{"Stormy - x0.4", "Rainy - x0.8", "Mild - x1.0", "Sunny - x1.2", "Heatwave - x0.6"}
 var weatherScale float64
 
-var scale int64 = 1000
 var numCheckouts int
 var checkoutsOpen int
 var numOperators int
