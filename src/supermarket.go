@@ -1,5 +1,5 @@
 //CS4011 - Supermarket ABB
-//Authored by: 
+//Authored by:
 //Adam Aherne - 12159603, Eoin Purtill - 17185467, Ronan McMullen - 0451657, Tedis Stumbrs - 17208475.
 
 package main
@@ -169,7 +169,6 @@ var mrManager manager
 
 var wg = &sync.WaitGroup{}
 
-
 func gui() {
 	app := app.New()
 	window := app.NewWindow("Supermarket Simulator CS4011")
@@ -246,9 +245,7 @@ func gui() {
 		isItemLimit = value
 	})
 	radio := widget.NewRadio([]string{"10%", "25%", "50%"}, func(value string) {
-		if strings.Compare(value, "10%") == 0 {
-			limitedCheckoutRate = 10
-		}
+		limitedCheckoutRate = 10
 		if strings.Compare(value, "25%") == 0 {
 			limitedCheckoutRate = 4
 		}
@@ -482,6 +479,7 @@ func postProcesses() string {
 			meanWait = time.Duration(float64(till.totalQueueWait*1_000) / float64(till.customersServed)).Truncate(time.Second)
 		}
 
+		output += fmt.Sprintf(" Scan Rate (per item)                        : %s\n", (till.operator.scanTime * 1_000).Truncate(time.Millisecond).String())
 		output += fmt.Sprintf(" Time Open                                   : %s\n", (open * 1_000).Truncate(time.Second).String())
 		output += fmt.Sprintf(" Total Scanning                              : %s\n", (till.totalScanTime * 1_000).Truncate(time.Second).String())
 		output += fmt.Sprintf(" Customers Served                            : %d\n", till.customersServed)
@@ -492,18 +490,14 @@ func postProcesses() string {
 		output += fmt.Sprintf(" Cumulative time waited by customers in queue: %s\n", (till.totalQueueWait * 1_000).Truncate(time.Second).String())
 	}
 
-	divisor := checkoutsOpen
-	if numOperators < checkoutsOpen {
-		divisor = numOperators
-	}
-
 	output += fmt.Sprintf("\n\nTOTALS:\n")
+	output += fmt.Sprintf(" Base Customer Arrival Rate      : 1 every %s\n", (time.Duration(float64(custArrivalRate)/weatherScale) * 1_000).Truncate(time.Millisecond).String())
+	output += fmt.Sprintf(" Arrival Rate After Weather      : 1 every %s\n", (custArrivalRate * 1_000).Truncate(time.Millisecond).String())
 	output += fmt.Sprintf(" Total Customers Served          : %d\n", totalCusts)
 	output += fmt.Sprintf(" Total Customers Lost            : %d\n", custsLost)
 	output += fmt.Sprintf(" Total Items Processed           : %d\n", totalItemsProcessed)
 	output += fmt.Sprintf(" Mean Number Items per Customer  : %.2f\n", (float64(totalItemsProcessed) / float64(totalCusts)))
-	output += fmt.Sprintf(" Total Till Utilization          : %.2f%%\n", (float64(tillUseTime)/float64(tillOpenTime))*100.0)
-	output += fmt.Sprintf(" Mean Till Utilization           : %.2f%%\n", runningUtilization/float64(divisor))
+	output += fmt.Sprintf(" Till Utilization                : %.2f%%\n", (float64(tillUseTime)/float64(tillOpenTime))*100.0)
 	output += fmt.Sprintf(" Mean Customer Wait Time         : %s\n", time.Duration(float64(waitTime*1_000)/float64(totalCusts)).Truncate(time.Second).String())
 	output += fmt.Sprintf(" Store Processed a customer every: %s\n", time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)).Truncate(time.Second).String())
 
@@ -582,7 +576,7 @@ func runSim() int {
 
 	//checkout operator setup
 	for i := range ops {
-		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime)) + int(minScanTime+1))}
+		ops[i] = &operator{time.Duration(rand.Intn(int((maxScanTime-minScanTime)+1)) + int(minScanTime))}
 	}
 
 	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
