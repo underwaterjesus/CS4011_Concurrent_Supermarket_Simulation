@@ -226,7 +226,7 @@ func gui() {
 	entry06 := widget.NewEntry()
 	entry06.SetPlaceHolder("- - Integer expected (1-200) - -")
 	entry07 := widget.NewEntry()
-	entry07.SetPlaceHolder("- - Integer expected (1-6) - -")
+	entry07.SetPlaceHolder("- - Integer expected (1-12) - -")
 	entry08 := widget.NewEntry()
 	entry08.SetPlaceHolder("- - Integer expected (0(none)-20) - -")
 	entry09 := widget.NewEntry()
@@ -325,7 +325,7 @@ func gui() {
 			valid = false
 			errorString += fmt.Sprintf("\nInvalid Input for max queue length!")
 		} else {
-			if maxQueueLength < 1 || maxQueueLength > 6 {
+			if maxQueueLength < 1 || maxQueueLength > 12 {
 				valid = false
 				errorString += fmt.Sprintf("\nMax queue length out of range!")
 			}
