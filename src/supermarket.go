@@ -1,3 +1,7 @@
+//CS4011 - Supermarket ABB
+//Authored by: 
+//Adam Aherne - 12159603, Eoin Purtill - 17185467, Ronan McMullen - 0451657, Tedis Stumbrs - 17208475.
+
 package main
 
 import (
