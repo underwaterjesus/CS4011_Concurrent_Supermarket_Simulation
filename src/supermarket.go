@@ -183,7 +183,7 @@ func gui() {
 	label10 := widget.NewLabel("Min Scan Time:")
 	label11 := widget.NewLabel("Max Scan Time:")
 	label12 := widget.NewLabel("Customer Arrival Rate:")
-	label13 := widget.NewLabel("Weather")
+	label13 := widget.NewLabel("Weather (affects C.A.R.)")
 	labelfiller := widget.NewLabel("")
 	selectWeather := widget.NewSelect(weatherStrings, func(selected string) {
 		//{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
