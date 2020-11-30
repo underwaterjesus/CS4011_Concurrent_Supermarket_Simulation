@@ -228,7 +228,7 @@ func gui() {
 	entry07 := widget.NewEntry()
 	entry07.SetPlaceHolder("- - Integer expected (1-12) - -")
 	entry08 := widget.NewEntry()
-	entry08.SetPlaceHolder("- - Integer expected (0(none)-20) - -")
+	entry08.SetPlaceHolder("- - Integer expected (1-20) - -")
 	entry09 := widget.NewEntry()
 	entry09.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
 	entry10 := widget.NewEntry()
@@ -335,9 +335,10 @@ func gui() {
 			valid = false
 			errorString += fmt.Sprintf("\nInvalid Input for manager item limit!")
 		} else {
-			if managerItemLimit < 0 || managerItemLimit > 20 {
+			if managerItemLimit < 1 || managerItemLimit > 20 {
 				valid = false
 				errorString += fmt.Sprintf("\nItem limit outside of range!")
+				isItemLimit = false
 			}
 		}
 		minST, ok = strconv.ParseFloat(entry09.Text, 64)
