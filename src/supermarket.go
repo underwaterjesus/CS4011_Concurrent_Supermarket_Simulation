@@ -133,7 +133,6 @@ func (op *operator) scan(cust *customer) {
 //seconds scaled to microseconds(1e-6 seconds)
 const maxItem = 2147483647
 
-//Array of strings not implemented yet
 var weatherStrings = []string{"Stormy - x0.4", "Rainy - x0.8", "Mild - x1.0", "Sunny - x1.2", "Heatwave - x0.6"}
 var weatherScale float64
 
@@ -154,8 +153,8 @@ var smartManager bool
 var isItemLimit bool
 var minST float64
 var maxST float64
-var minScanTime time.Duration //= time.Duration(minST * float64(time.Microsecond))
-var maxScanTime time.Duration //= time.Duration(maxST * float64(time.Microsecond))
+var minScanTime time.Duration
+var maxScanTime time.Duration
 var simRunTime time.Duration
 var arrivalRateScale float64
 var custArrivalRate time.Duration = 60 * time.Millisecond
@@ -392,7 +391,6 @@ func gui() {
 			errorContent := fyne.NewContainerWithoutLayout(errorOutputLabel)
 			window.SetContent(errorContent)
 			window.Resize(fyne.Size{500, 300})
-			//fmt.Println(errorString) //ERROR WINDOW HERE
 		} else {
 			minScanTime = time.Duration(minST * float64(time.Millisecond))
 			maxScanTime = time.Duration(maxST * float64(time.Millisecond))
@@ -637,7 +635,6 @@ func runSim() int {
 
 	}
 
-	//does not need to be goroutine atm, but probably will later
 	simStart := time.Now()
 
 SpawnLoop:
