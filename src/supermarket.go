@@ -130,7 +130,7 @@ func (op *operator) scan(cust *customer) {
 const maxItem = 2147483647
 
 //Array of strings not implemented yet
-var weatherStrings = []string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
+var weatherStrings = []string{"Stormy - x0.4", "Rainy - x0.8", "Mild - x1.0", "Sunny - x1.2", "Heatwave - x0.6"}
 var weatherScale float64
 
 var scale int64 = 1000
@@ -153,6 +153,7 @@ var maxST float64
 var minScanTime time.Duration //= time.Duration(minST * float64(time.Microsecond))
 var maxScanTime time.Duration //= time.Duration(maxST * float64(time.Microsecond))
 var simRunTime time.Duration
+var arrivalRateScale float64
 var custArrivalRate time.Duration = 60 * time.Millisecond
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
@@ -181,23 +182,25 @@ func gui() {
 	label09 := widget.NewLabel("Item Limited Till Rate:")
 	label10 := widget.NewLabel("Min Scan Time:")
 	label11 := widget.NewLabel("Max Scan Time:")
+	label12 := widget.NewLabel("Customer Arrival Rate:")
+	label13 := widget.NewLabel("Weather")
 	labelfiller := widget.NewLabel("")
 	selectWeather := widget.NewSelect(weatherStrings, func(selected string) {
 		//{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
 		//{0.4, 0.8, 1, 1.2, 0.6}
-		if selected == "Stormy" {
+		if selected == "Stormy - x0.4" {
 
 			weatherScale = 0.4
 
-		} else if selected == "Rainy" {
+		} else if selected == "Rainy - x0.8" {
 
 			weatherScale = 0.8
 
-		} else if selected == "Sunny" {
+		} else if selected == "Sunny - x1.2" {
 
 			weatherScale = 1.2
 
-		} else if selected == "Heatwave" {
+		} else if selected == "Heatwave - x0.6" {
 
 			weatherScale = 0.6
 
@@ -210,25 +213,27 @@ func gui() {
 	})
 
 	entry01 := widget.NewEntry()
-	entry01.SetPlaceHolder("---")
+	entry01.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
 	entry02 := widget.NewEntry()
-	entry02.SetPlaceHolder("---")
+	entry02.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
 	entry03 := widget.NewEntry()
-	entry03.SetPlaceHolder("---")
+	entry03.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
 	entry04 := widget.NewEntry()
-	entry04.SetPlaceHolder("---")
+	entry04.SetPlaceHolder("- - Positive Integer expected (1-200) - -")
 	entry05 := widget.NewEntry()
-	entry05.SetPlaceHolder("---")
+	entry05.SetPlaceHolder("- - Positive Integer expected (1-200) - -")
 	entry06 := widget.NewEntry()
-	entry06.SetPlaceHolder("---")
+	entry06.SetPlaceHolder("- - Positive Integer expected (1-200) - -")
 	entry07 := widget.NewEntry()
-	entry07.SetPlaceHolder("---")
+	entry07.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
 	entry08 := widget.NewEntry()
-	entry08.SetPlaceHolder("---")
+	entry08.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
 	entry09 := widget.NewEntry()
-	entry09.SetPlaceHolder("---")
+	entry09.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
 	entry10 := widget.NewEntry()
-	entry10.SetPlaceHolder("---")
+	entry10.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
+	entry11 := widget.NewEntry()
+	entry11.SetPlaceHolder("- - Float expected (1.0 - 60.0) - -")
 
 	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
 		smartManager = value
@@ -264,9 +269,14 @@ func gui() {
 		maxST, _ = strconv.ParseFloat(entry10.Text, 64)
 		minScanTime = time.Duration(minST * float64(time.Millisecond))
 		maxScanTime = time.Duration(maxST * float64(time.Millisecond))
-		custArrivalRate = time.Duration(float64(custArrivalRate) / 1.0)
+		arrivalRateScale, _ = strconv.ParseFloat(entry11.Text, 64)
+		custArrivalRate = time.Duration(float64(custArrivalRate) / arrivalRateScale)
 		//custArrivalRate = time.Duration(float64(custArrivalRate) / 60.0)
 		custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
+		
+
+
+
 		fmt.Println("Arr. Rate:", custArrivalRate)
 		fmt.Println("Scan times:", minScanTime, maxScanTime)
 		if runSim() == 1 {
@@ -291,12 +301,13 @@ func gui() {
 		label08, entry08,
 		label10, entry09,
 		label11, entry10,
+		label12, entry11,
+		label13, labelfiller,
 		selectWeather, checkbox03,
 		labelfiller, label09,
 		labelfiller, radio,
 		labelfiller, labelfiller,
 		checkbox01, checkbox02,
-		labelfiller, labelfiller,
 		labelfiller, button01,
 	)
 
