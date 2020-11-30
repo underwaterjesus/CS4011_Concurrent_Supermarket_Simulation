@@ -172,7 +172,7 @@ func gui() {
 	window := app.NewWindow("Supermarket Simulator Param Input")
 	label01 := widget.NewLabel("Number of Checkouts:")
 	label02 := widget.NewLabel("Checkouts Open:")
-	label03 := widget.NewLabel("Number of Checkout Operartors:")
+	label03 := widget.NewLabel("Number of Checkout Operators:")
 	label04 := widget.NewLabel("Number of Customers:")
 	label05 := widget.NewLabel("Minimum Items:")
 	label06 := widget.NewLabel("Maximum Items:")
