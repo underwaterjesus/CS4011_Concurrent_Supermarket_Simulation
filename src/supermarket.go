@@ -118,18 +118,6 @@ func (manager *manager) sortOperators() {
 	sort.Sort(byScanTime(ops))
 }
 
-func (till *queue) moveAlong() {
-	<-till.customers
-}
-
-func (cust *customer) checkPatience() bool {
-	timeWaited := time.Since(cust.enterQAt)
-	if timeWaited > (cust.patience) {
-		return false
-	}
-	return true
-}
-
 func (op *operator) scan(cust *customer) {
 	n := cust.items
 	cust.timeInQueue = time.Since(cust.enterQAt)
@@ -170,15 +158,12 @@ var smartManager bool
 var isItemLimit bool
 var minST float64
 var maxST float64
-var minScanTime time.Duration = time.Duration(minST * float64(time.Microsecond))
-var maxScanTime time.Duration = time.Duration(maxST * float64(time.Microsecond))
+var minScanTime time.Duration //= time.Duration(minST * float64(time.Microsecond))
+var maxScanTime time.Duration //= time.Duration(maxST * float64(time.Microsecond))
 var simRunTime time.Duration
-var custArrivalRate time.Duration = 180 * time.Microsecond //5mins scaled secs->microsecs
+var custArrivalRate time.Duration = 60 * time.Microsecond
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
-
-var spawner = time.NewTicker(custArrivalRate)
-var tick = time.NewTicker(custArrivalRate / 10)
 
 var mutex = &sync.Mutex{}
 var tills []*checkout
@@ -205,54 +190,54 @@ func gui() {
 	label10 := widget.NewLabel("Min Scan Time:")
 	label11 := widget.NewLabel("Max Scan Time:")
 	labelfiller := widget.NewLabel("")
-	selectWeather := widget.NewSelect(weatherStrings, func(selected string){
+	selectWeather := widget.NewSelect(weatherStrings, func(selected string) {
 		//{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
 		//{0.4, 0.8, 1, 1.2, 0.6}
 		if selected == "Stormy" {
-		
+
 			weatherScale = 0.4
 
-		}else if selected == "Rainy" {
+		} else if selected == "Rainy" {
 
 			weatherScale = 0.8
-		
-		}else if selected == "Sunny" {
+
+		} else if selected == "Sunny" {
 
 			weatherScale = 1.2
 
-		}else if selected == "Heatwave" {
-		
+		} else if selected == "Heatwave" {
+
 			weatherScale = 0.6
-		
-		}else{
+
+		} else {
 
 			weatherScale = 1.0
 
 		}
-		
+
 	})
-	
+
 	entry01 := widget.NewEntry()
-	entry01.SetPlaceHolder("---") 
+	entry01.SetPlaceHolder("---")
 	entry02 := widget.NewEntry()
-	entry02.SetPlaceHolder("---") 
+	entry02.SetPlaceHolder("---")
 	entry03 := widget.NewEntry()
-	entry03.SetPlaceHolder("---") 
+	entry03.SetPlaceHolder("---")
 	entry04 := widget.NewEntry()
-	entry04.SetPlaceHolder("---") 
+	entry04.SetPlaceHolder("---")
 	entry05 := widget.NewEntry()
-	entry05.SetPlaceHolder("---") 
+	entry05.SetPlaceHolder("---")
 	entry06 := widget.NewEntry()
-	entry06.SetPlaceHolder("---") 
+	entry06.SetPlaceHolder("---")
 	entry07 := widget.NewEntry()
-	entry07.SetPlaceHolder("---") 
+	entry07.SetPlaceHolder("---")
 	entry08 := widget.NewEntry()
-	entry08.SetPlaceHolder("---") 
+	entry08.SetPlaceHolder("---")
 	entry09 := widget.NewEntry()
 	entry09.SetPlaceHolder("---")
 	entry10 := widget.NewEntry()
 	entry10.SetPlaceHolder("---")
-	
+
 	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
 		smartManager = value
 	})
@@ -263,15 +248,15 @@ func gui() {
 		isItemLimit = value
 	})
 	radio := widget.NewRadio([]string{"10%", "25%", "50%"}, func(value string) {
-		if strings.Compare(value,"10%")==0 {
+		if strings.Compare(value, "10%") == 0 {
 			limitedCheckoutRate = 10
 		}
-		if strings.Compare(value,"25%")==0 {
+		if strings.Compare(value, "25%") == 0 {
 			limitedCheckoutRate = 4
 		}
-		if strings.Compare(value,"50%")==0 {
+		if strings.Compare(value, "50%") == 0 {
 			limitedCheckoutRate = 2
-		}	
+		}
 	})
 	button01 := widget.NewButton("Begin simulation", func() {
 
@@ -285,8 +270,13 @@ func gui() {
 		managerItemLimit, _ = strconv.Atoi(entry08.Text)
 		minST, _ = strconv.ParseFloat(entry09.Text, 64)
 		maxST, _ = strconv.ParseFloat(entry10.Text, 64)
+		minScanTime = time.Duration(minST * float64(time.Microsecond))
+		maxScanTime = time.Duration(maxST * float64(time.Microsecond))
+		//custArrivalRate = time.Duration(float64(custArrivalRate) / 1.0)
+		custArrivalRate = time.Duration(float64(custArrivalRate) / 1_000.0)
+		custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
 
-
+		fmt.Println("Arr. rate:", custArrivalRate, "- weatherScale", weatherScale)
 		if runSim() == 1 {
 			outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
 			outputLabel.Wrapping = fyne.TextWrapOff
@@ -295,17 +285,17 @@ func gui() {
 			content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
 			window.SetContent(content2)
 		}
-		
+
 	})
-	
+
 	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
-		label01, entry01, 
-		label02, entry02, 
-		label03, entry03, 
-		label04, entry04, 
-		label05, entry05, 
-		label06, entry06, 
-		label07, entry07, 
+		label01, entry01,
+		label02, entry02,
+		label03, entry03,
+		label04, entry04,
+		label05, entry05,
+		label06, entry06,
+		label07, entry07,
 		label08, entry08,
 		label10, entry09,
 		label11, entry10,
@@ -319,7 +309,7 @@ func gui() {
 	)
 
 	window.SetContent(content)
-	window.Resize(fyne.Size{600,700})
+	window.Resize(fyne.Size{600, 700})
 	window.ShowAndRun()
 
 }
@@ -422,30 +412,32 @@ func runSim() int {
 	ops = make([]*operator, numOperators)
 	custs = make(chan *customer, numCusts)
 	servedCusts = make(chan *customer, numCusts)
+	spawner := time.NewTicker(custArrivalRate)
 
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
 	mrManager.name = "Mr. Manager"
 	var num int
-	if(isItemLimit && limitedCheckoutRate>0){
-		if checkoutsOpen % 2 == 0{
+	if isItemLimit && limitedCheckoutRate > 0 {
+		if checkoutsOpen%2 == 0 {
 			num = checkoutsOpen / limitedCheckoutRate
-			if num <= 0 {num = 1}
+			if num <= 0 {
+				num = 1
+			}
 			mrManager.cappedCheckRate = num
-		}else{
-			num = checkoutsOpen-1 / limitedCheckoutRate
-			if num <+ 0 {num = 1}
+		} else {
+			num = (checkoutsOpen - 1) / limitedCheckoutRate
+			if num <= 0 {
+				num = 1
+			}
 			mrManager.cappedCheckRate = num
 		}
-	}else{
+	} else {
 		mrManager.cappedCheckRate = 0
 	}
 	mrManager.itemLimit = managerItemLimit
 	mrManager.isSmart = smartManager
 	mrManager.isItemLimit = isItemLimit
-
-	//Modify the customer arrival rate based on the weather
-	custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
 
 	//checkout setup
 	for i := range tills {
@@ -468,8 +460,10 @@ func runSim() int {
 	}
 
 	//checkout operator setup
+	fmt.Println("min:", minScanTime, "- max:", maxScanTime)
 	for i := range ops {
-		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime) + int(minScanTime+1)))}
+		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime)) + int(minScanTime+1))}
+		fmt.Println("Op scantime:", ops[i].scanTime, "- Maths bit:", float64(maxScanTime-minScanTime), float64(minScanTime+1))
 	}
 
 	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
@@ -489,6 +483,7 @@ func runSim() int {
 		custs <- &customer{(rand.Intn((maxItems-minItems)+1) + minItems), "0", time.Now(), 0, 0, time.Second}
 	}
 
+	fmt.Println("Arrival rate at spawner:", custArrivalRate)
 	//process customers at tills.
 	for _, till := range tills {
 		if till.open && till.operator != nil {
@@ -514,7 +509,7 @@ func runSim() int {
 						check.totalScanTime += c.timeAtTill
 						check.itemsProcessed += c.items
 						check.customersServed++
-						
+
 					}
 				}
 			}(till, wg)
@@ -524,10 +519,12 @@ func runSim() int {
 
 	//does not need to be goroutine atm, but probably will later
 	simStart := time.Now()
+	fmt.Println("Arrival rate at spawn loop:", custArrivalRate)
 SpawnLoop:
 	for {
 		select {
-		case <-spawner.C:
+		case h := <-spawner.C:
+			fmt.Println("h:", h, "arr rate:", custArrivalRate)
 			select {
 			case c, ok := <-custs:
 				if !ok {
@@ -555,10 +552,9 @@ SpawnLoop:
 	for _, till := range tills {
 		till.endTime = time.Now()
 	}
-	
+
 	simRunTime = time.Since(simStart)
 	close(servedCusts)
-	
 
 	return 1
 }
