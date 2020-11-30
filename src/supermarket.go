@@ -161,7 +161,7 @@ var maxST float64
 var minScanTime time.Duration //= time.Duration(minST * float64(time.Microsecond))
 var maxScanTime time.Duration //= time.Duration(maxST * float64(time.Microsecond))
 var simRunTime time.Duration
-var custArrivalRate time.Duration = 60 * time.Microsecond
+var custArrivalRate time.Duration = 600 * time.Microsecond
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
 
@@ -273,10 +273,9 @@ func gui() {
 		minScanTime = time.Duration(minST * float64(time.Microsecond))
 		maxScanTime = time.Duration(maxST * float64(time.Microsecond))
 		//custArrivalRate = time.Duration(float64(custArrivalRate) / 1.0)
-		custArrivalRate = time.Duration(float64(custArrivalRate) / 1_000.0)
+		custArrivalRate = time.Duration(float64(custArrivalRate) / 60.0)
 		custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
-
-		fmt.Println("Arr. rate:", custArrivalRate, "- weatherScale", weatherScale)
+		fmt.Println("Arr. Rate:", custArrivalRate)
 		if runSim() == 1 {
 			outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
 			outputLabel.Wrapping = fyne.TextWrapOff
@@ -460,10 +459,8 @@ func runSim() int {
 	}
 
 	//checkout operator setup
-	fmt.Println("min:", minScanTime, "- max:", maxScanTime)
 	for i := range ops {
 		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime)) + int(minScanTime+1))}
-		fmt.Println("Op scantime:", ops[i].scanTime, "- Maths bit:", float64(maxScanTime-minScanTime), float64(minScanTime+1))
 	}
 
 	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
@@ -483,7 +480,6 @@ func runSim() int {
 		custs <- &customer{(rand.Intn((maxItems-minItems)+1) + minItems), "0", time.Now(), 0, 0, time.Second}
 	}
 
-	fmt.Println("Arrival rate at spawner:", custArrivalRate)
 	//process customers at tills.
 	for _, till := range tills {
 		if till.open && till.operator != nil {
@@ -519,12 +515,11 @@ func runSim() int {
 
 	//does not need to be goroutine atm, but probably will later
 	simStart := time.Now()
-	fmt.Println("Arrival rate at spawn loop:", custArrivalRate)
+
 SpawnLoop:
 	for {
 		select {
-		case h := <-spawner.C:
-			fmt.Println("h:", h, "arr rate:", custArrivalRate)
+		case <-spawner.C:
 			select {
 			case c, ok := <-custs:
 				if !ok {
