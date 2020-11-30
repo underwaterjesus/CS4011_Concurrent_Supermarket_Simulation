@@ -170,7 +170,7 @@ var wg = &sync.WaitGroup{}
 //GUI function
 func gui() {
 	app := app.New()
-	window := app.NewWindow("Supermarket Simulator Param Input")
+	window := app.NewWindow("Supermarket Simulator CS4011")
 	label01 := widget.NewLabel("Number of Checkouts:")
 	label02 := widget.NewLabel("Checkouts Open:")
 	label03 := widget.NewLabel("Number of Checkout Operators:")
@@ -385,7 +385,11 @@ func gui() {
 			}
 		}
 		if !valid {
-			fmt.Println(errorString) //ERROR WINDOW HERE
+			errorOutputLabel := widget.NewLabel(errorString)
+			errorContent := fyne.NewContainerWithoutLayout(errorOutputLabel)
+			window.SetContent(errorContent)
+			window.Resize(fyne.Size{500, 300})
+			//fmt.Println(errorString) //ERROR WINDOW HERE
 		} else {
 			minScanTime = time.Duration(minST * float64(time.Millisecond))
 			maxScanTime = time.Duration(maxST * float64(time.Millisecond))
