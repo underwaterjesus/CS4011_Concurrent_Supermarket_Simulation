@@ -186,8 +186,7 @@ func gui() {
 	label13 := widget.NewLabel("Weather (affects C.A.R.)")
 	labelfiller := widget.NewLabel("")
 	selectWeather := widget.NewSelect(weatherStrings, func(selected string) {
-		//{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
-		//{0.4, 0.8, 1, 1.2, 0.6}
+
 		if selected == "Stormy - x0.4" {
 
 			weatherScale = 0.4
