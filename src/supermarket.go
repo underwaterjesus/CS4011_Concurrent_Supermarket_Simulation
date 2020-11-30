@@ -169,7 +169,7 @@ var mrManager manager
 
 var wg = &sync.WaitGroup{}
 
-//GUI function
+
 func gui() {
 	app := app.New()
 	window := app.NewWindow("Supermarket Simulator CS4011")
