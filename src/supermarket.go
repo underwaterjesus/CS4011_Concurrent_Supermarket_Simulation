@@ -213,27 +213,27 @@ func gui() {
 	})
 
 	entry01 := widget.NewEntry()
-	entry01.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
+	entry01.SetPlaceHolder("- - Integer expected (1-8) - -")
 	entry02 := widget.NewEntry()
-	entry02.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
+	entry02.SetPlaceHolder("- - Integer expected (1-8) - -")
 	entry03 := widget.NewEntry()
-	entry03.SetPlaceHolder("- - Positive Integer expected (1-8) - -")
+	entry03.SetPlaceHolder("- - Integer expected (1-8) - -")
 	entry04 := widget.NewEntry()
-	entry04.SetPlaceHolder("- - Positive Integer expected (1-200) - -")
+	entry04.SetPlaceHolder("- - Integer expected (1-200) - -")
 	entry05 := widget.NewEntry()
-	entry05.SetPlaceHolder("- - Positive Integer expected (1-200) - -")
+	entry05.SetPlaceHolder("- - Integer expected (1-200) - -")
 	entry06 := widget.NewEntry()
-	entry06.SetPlaceHolder("- - Positive Integer expected (1-200) - -")
+	entry06.SetPlaceHolder("- - Integer expected (1-200) - -")
 	entry07 := widget.NewEntry()
-	entry07.SetPlaceHolder("- - Positive Integer expected (1-6) - -")
+	entry07.SetPlaceHolder("- - Integer expected (1-6) - -")
 	entry08 := widget.NewEntry()
-	entry08.SetPlaceHolder("- - Positive Integer expected (0(none)-20) - -")
+	entry08.SetPlaceHolder("- - Integer expected (0(none)-20) - -")
 	entry09 := widget.NewEntry()
 	entry09.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
 	entry10 := widget.NewEntry()
 	entry10.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
 	entry11 := widget.NewEntry()
-	entry11.SetPlaceHolder("- - Float expected (1.0 - 60.0) - -")
+	entry11.SetPlaceHolder("- - Float expected (1.0 - 60.0) (1 = slowest) - -")
 
 	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
 		smartManager = value
@@ -262,126 +262,126 @@ func gui() {
 		numCheckouts, ok = strconv.Atoi(entry01.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for checkout number")
+			errorString += fmt.Sprintf("\nInvalid Input for checkout number!")
 		} else {
 			if numCheckouts < 1 || numCheckouts > 8 {
 				valid = false
-				errorString += fmt.Sprintf("\nNumber of checkouts outside range")
+				errorString += fmt.Sprintf("\nNumber of checkouts outside range!")
 			}
 		}
 		checkoutsOpen, ok = strconv.Atoi(entry02.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for checkouts open")
+			errorString += fmt.Sprintf("\nInvalid Input for checkouts open!")
 		} else {
 			if checkoutsOpen < 1 || checkoutsOpen > 8 {
 				valid = false
-				errorString += fmt.Sprintf("\nCheckouts open outside range")
+				errorString += fmt.Sprintf("\nCheckouts open outside range!")
 			}
 		}
 		numOperators, ok = strconv.Atoi(entry03.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for operator number")
+			errorString += fmt.Sprintf("\nInvalid Input for operator number!")
 		} else {
 			if numOperators < 1 || numOperators > 8 {
 				valid = false
-				errorString += fmt.Sprintf("\nCheckout operators outside range")
+				errorString += fmt.Sprintf("\nCheckout operators outside range!")
 			}
 		}
 		numCusts, ok = strconv.Atoi(entry04.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for customer number")
+			errorString += fmt.Sprintf("\nInvalid Input for customer number!")
 		} else {
 			if numCusts < 1 || numCusts > 200 {
 				valid = false
-				errorString += fmt.Sprintf("\nNumber of customers outside range")
+				errorString += fmt.Sprintf("\nNumber of customers outside range!")
 			}
 		}
 		minItems, ok = strconv.Atoi(entry05.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for item minimum")
+			errorString += fmt.Sprintf("\nInvalid Input for item minimum!")
 		} else {
 			if minItems < 1 || minItems > 200 {
 				valid = false
-				errorString += fmt.Sprintf("\nMin items out of range")
+				errorString += fmt.Sprintf("\nMin items out of range!")
 			}
 		}
 		maxItems, ok = strconv.Atoi(entry06.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for item maximum")
+			errorString += fmt.Sprintf("\nInvalid Input for item maximum!")
 		} else {
 			if maxItems < 1 || maxItems > 200 {
 				valid = false
-				errorString += fmt.Sprintf("\nMax items out of range")
+				errorString += fmt.Sprintf("\nMax items out of range!")
 			}
 		}
 		maxQueueLength, ok = strconv.Atoi(entry07.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for max queue length")
+			errorString += fmt.Sprintf("\nInvalid Input for max queue length!")
 		} else {
 			if maxQueueLength < 1 || maxQueueLength > 6 {
 				valid = false
-				errorString += fmt.Sprintf("\nMax queue length out of range")
+				errorString += fmt.Sprintf("\nMax queue length out of range!")
 			}
 		}
 		managerItemLimit, ok = strconv.Atoi(entry08.Text)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for manager item limit")
+			errorString += fmt.Sprintf("\nInvalid Input for manager item limit!")
 		} else {
 			if managerItemLimit < 0 || managerItemLimit > 20 {
 				valid = false
-				errorString += fmt.Sprintf("\nItem limit outside of range")
+				errorString += fmt.Sprintf("\nItem limit outside of range!")
 			}
 		}
 		minST, ok = strconv.ParseFloat(entry09.Text, 64)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for minimum scan time")
+			errorString += fmt.Sprintf("\nInvalid Input for minimum scan time!")
 		} else {
 			if minST < 0.5 || minST > 6.0 {
 				valid = false
-				errorString += fmt.Sprintf("\nMin scan time out of range")
+				errorString += fmt.Sprintf("\nMin scan time out of range!")
 			}
 		}
 		maxST, ok = strconv.ParseFloat(entry10.Text, 64)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for maximum scan time")
+			errorString += fmt.Sprintf("\nInvalid Input for maximum scan time!")
 		} else {
 			if maxST < 0.5 || maxST > 6.0 {
 				valid = false
-				errorString += fmt.Sprintf("\nMax scan time out of range")
+				errorString += fmt.Sprintf("\nMax scan time out of range!")
 			}
 		}
 		arrivalRateScale, ok = strconv.ParseFloat(entry11.Text, 64)
 		if ok != nil {
 			valid = false
-			errorString += fmt.Sprintf("\nInvalid Input for arrival rate")
+			errorString += fmt.Sprintf("\nInvalid Input for arrival rate!")
 		} else {
 			if arrivalRateScale < 1.0 || arrivalRateScale > 60.0 {
 				valid = false
-				errorString += fmt.Sprintf("\nCustomer arrival rate out of range")
+				errorString += fmt.Sprintf("\nCustomer arrival rate out of range!")
 			}
 		}
 
 		if valid {
 			if minST > maxST {
 				valid = false
-				errorString += fmt.Sprintf("\nMin scan time is greater than max scan time")
+				errorString += fmt.Sprintf("\nMin scan time is greater than max scan time!")
 			}
 			if minItems > maxItems {
 				valid = false
-				errorString += fmt.Sprintf("\nMin items is greater than max items")
+				errorString += fmt.Sprintf("\nMin items is greater than max items!")
 			}
 			if checkoutsOpen > numCheckouts {
 				valid = false
-				errorString += fmt.Sprintf("\nCheckouts open is greater than number of checkouts")
+				errorString += fmt.Sprintf("\nCheckouts open is greater than number of checkouts!")
 			}
 		}
 		if !valid {
