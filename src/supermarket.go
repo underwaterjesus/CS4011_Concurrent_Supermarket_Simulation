@@ -1,3 +1,7 @@
+//CS4011 - Supermarket ABB
+//Authored by:
+//Adam Aherne - 12159603, Eoin Purtill - 17185467, Ronan McMullen - 0451657, Tedis Stumbrs - 17208475.
+
 package main
 
 import (
@@ -6,9 +10,15 @@ import (
 	"math/rand"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"fyne.io/fyne"
+	"fyne.io/fyne/app"
+	"fyne.io/fyne/layout"
+	"fyne.io/fyne/widget"
 )
 
 //STRUCTS
@@ -34,7 +44,7 @@ type manager struct {
 	cappedCheckRate int
 	itemLimit       int
 	isSmart         bool
-	isQuikCheck     bool
+	isItemLimit     bool
 }
 
 type checkout struct {
@@ -54,10 +64,6 @@ type checkout struct {
 	percentTimeWorking float32
 	timePerCust        float32
 	numInQ             int32
-}
-
-type weather struct {
-	weatherCondition float32
 }
 
 type byQLength []*checkout
@@ -112,18 +118,6 @@ func (manager *manager) sortOperators() {
 	sort.Sort(byScanTime(ops))
 }
 
-func (till *queue) moveAlong() {
-	<-till.customers
-}
-
-func (cust *customer) checkPatience() bool {
-	timeWaited := time.Since(cust.enterQAt)
-	if timeWaited > (cust.patience) {
-		return false
-	}
-	return true
-}
-
 func (op *operator) scan(cust *customer) {
 	n := cust.items
 	cust.timeInQueue = time.Since(cust.enterQAt)
@@ -139,57 +133,426 @@ func (op *operator) scan(cust *customer) {
 //seconds scaled to microseconds(1e-6 seconds)
 const maxItem = 2147483647
 
-//Array of strings not implemented yet
-var setWeather = 1 // Change from 0 - 4 to see changes in customerArrival Rate
-var weatherStrings = [5]string{"Stormy", "Rainy", "Mild", "Sunny", "Heatwave"}
-var weatherScale = [5]float64{0.4, 0.8, 1, 1.2, 0.6}
+var weatherStrings = []string{"Stormy - x0.4", "Rainy - x0.8", "Mild - x1.0", "Sunny - x1.2", "Heatwave - x0.6"}
+var weatherScale float64
 
-//setting user input to Mild => 2 => 1
-var weatherConditions weather
-
-var scale int64 = 1000
-var numCheckouts = 8
-var checkoutsOpen = 8
-var numOperators = 7
-var numCusts = 200
+var numCheckouts int
+var checkoutsOpen int
+var numOperators int
+var numCusts int
+var totalCustsServed int
 var custsLost = 0
-var minItems = 1
-var maxItems = 90
-var minPatience = 0
-var maxPatience = 1
-var maxQueueLength = 6
-var smartCusts = false
-var minScanTime time.Duration = 3 * time.Microsecond
-var maxScanTime time.Duration = 10 * time.Microsecond
-var custArrivalRate time.Duration = 180 * time.Microsecond //
+var minItems int
+var maxItems int
+var maxQueueLength int
+var managerItemLimit int
+var limitedCheckoutRate int
+var smartCusts bool
+var smartManager bool
+var isItemLimit bool
+var minST float64
+var maxST float64
+var minScanTime time.Duration
+var maxScanTime time.Duration
+var simRunTime time.Duration
+var arrivalRateScale float64
+var custArrivalRate time.Duration = 60 * time.Millisecond
 var totalItemsProcessed = 0
 var averageItemsPerTrolley = 0
 
-var spawner = time.NewTicker(custArrivalRate)
-var tick = time.NewTicker(custArrivalRate / 10)
-
 var mutex = &sync.Mutex{}
-var tills = make([]*checkout, numCheckouts)
-var ops = make([]*operator, numOperators)
-var custs = make(chan *customer, numCusts)
-var servedCusts = make(chan *customer, numCusts)
+var tills []*checkout
+var ops []*operator
+var custs chan *customer
+var servedCusts chan *customer
 var mrManager manager
 
 var wg = &sync.WaitGroup{}
 
-func main() {
+func gui() {
+	app := app.New()
+	window := app.NewWindow("Supermarket Simulator CS4011")
+	label01 := widget.NewLabel("Number of Checkouts:")
+	label02 := widget.NewLabel("Checkouts Open:")
+	label03 := widget.NewLabel("Number of Checkout Operators:")
+	label04 := widget.NewLabel("Number of Customers:")
+	label05 := widget.NewLabel("Minimum Items:")
+	label06 := widget.NewLabel("Maximum Items:")
+	label07 := widget.NewLabel("Max Queue Length:")
+	label08 := widget.NewLabel("Manager Checkout Item Limit:")
+	label09 := widget.NewLabel("Item Limited Till Rate:")
+	label10 := widget.NewLabel("Min Scan Time:")
+	label11 := widget.NewLabel("Max Scan Time:")
+	label12 := widget.NewLabel("Customer Arrival Rate:")
+	label13 := widget.NewLabel("Weather (affects C.A.R.)")
+	labelfiller := widget.NewLabel("")
+	selectWeather := widget.NewSelect(weatherStrings, func(selected string) {
+
+		if selected == "Stormy - x0.4" {
+
+			weatherScale = 0.4
+
+		} else if selected == "Rainy - x0.8" {
+
+			weatherScale = 0.8
+
+		} else if selected == "Sunny - x1.2" {
+
+			weatherScale = 1.2
+
+		} else if selected == "Heatwave - x0.6" {
+
+			weatherScale = 0.6
+
+		} else {
+
+			weatherScale = 1.0
+
+		}
+
+	})
+
+	entry01 := widget.NewEntry()
+	entry01.SetPlaceHolder("- - Integer expected (1-8) - -")
+	entry02 := widget.NewEntry()
+	entry02.SetPlaceHolder("- - Integer expected (1-8) - -")
+	entry03 := widget.NewEntry()
+	entry03.SetPlaceHolder("- - Integer expected (1-8) - -")
+	entry04 := widget.NewEntry()
+	entry04.SetPlaceHolder("- - Integer expected (1-200) - -")
+	entry05 := widget.NewEntry()
+	entry05.SetPlaceHolder("- - Integer expected (1-200) - -")
+	entry06 := widget.NewEntry()
+	entry06.SetPlaceHolder("- - Integer expected (1-200) - -")
+	entry07 := widget.NewEntry()
+	entry07.SetPlaceHolder("- - Integer expected (1-12) - -")
+	entry08 := widget.NewEntry()
+	entry08.SetPlaceHolder("- - Integer expected (1-20) - -")
+	entry09 := widget.NewEntry()
+	entry09.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
+	entry10 := widget.NewEntry()
+	entry10.SetPlaceHolder("- - Float expected (0.5 - 6.0) - -")
+	entry11 := widget.NewEntry()
+	entry11.SetPlaceHolder("- - Float expected (1.0 - 60.0) (1 = slowest) - -")
+
+	checkbox01 := widget.NewCheck("Smart Manager", func(value bool) {
+		smartManager = value
+	})
+	checkbox02 := widget.NewCheck("Smart Customers", func(value bool) {
+		smartCusts = value
+	})
+	checkbox03 := widget.NewCheck("Item Limit Tills?", func(value bool) {
+		isItemLimit = value
+	})
+	radio := widget.NewRadio([]string{"10%", "25%", "50%"}, func(value string) {
+		limitedCheckoutRate = 10
+		if strings.Compare(value, "25%") == 0 {
+			limitedCheckoutRate = 4
+		}
+		if strings.Compare(value, "50%") == 0 {
+			limitedCheckoutRate = 2
+		}
+	})
+	button01 := widget.NewButton("Begin simulation", func() {
+		var ok error
+		valid := true
+		errorString := ""
+		numCheckouts, ok = strconv.Atoi(entry01.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for checkout number!")
+		} else {
+			if numCheckouts < 1 || numCheckouts > 8 {
+				valid = false
+				errorString += fmt.Sprintf("\nNumber of checkouts outside range!")
+			}
+		}
+		checkoutsOpen, ok = strconv.Atoi(entry02.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for checkouts open!")
+		} else {
+			if checkoutsOpen < 1 || checkoutsOpen > 8 {
+				valid = false
+				errorString += fmt.Sprintf("\nCheckouts open outside range!")
+			}
+		}
+		numOperators, ok = strconv.Atoi(entry03.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for operator number!")
+		} else {
+			if numOperators < 1 || numOperators > 8 {
+				valid = false
+				errorString += fmt.Sprintf("\nCheckout operators outside range!")
+			}
+		}
+		numCusts, ok = strconv.Atoi(entry04.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for customer number!")
+		} else {
+			if numCusts < 1 || numCusts > 200 {
+				valid = false
+				errorString += fmt.Sprintf("\nNumber of customers outside range!")
+			}
+		}
+		minItems, ok = strconv.Atoi(entry05.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for item minimum!")
+		} else {
+			if minItems < 1 || minItems > 200 {
+				valid = false
+				errorString += fmt.Sprintf("\nMin items out of range!")
+			}
+		}
+		maxItems, ok = strconv.Atoi(entry06.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for item maximum!")
+		} else {
+			if maxItems < 1 || maxItems > 200 {
+				valid = false
+				errorString += fmt.Sprintf("\nMax items out of range!")
+			}
+		}
+		maxQueueLength, ok = strconv.Atoi(entry07.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for max queue length!")
+		} else {
+			if maxQueueLength < 1 || maxQueueLength > 12 {
+				valid = false
+				errorString += fmt.Sprintf("\nMax queue length out of range!")
+			}
+		}
+		managerItemLimit, ok = strconv.Atoi(entry08.Text)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for manager item limit!")
+		} else {
+			if managerItemLimit < 1 || managerItemLimit > 20 {
+				valid = false
+				errorString += fmt.Sprintf("\nItem limit outside of range!")
+				isItemLimit = false
+			}
+		}
+		minST, ok = strconv.ParseFloat(entry09.Text, 64)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for minimum scan time!")
+		} else {
+			if minST < 0.5 || minST > 6.0 {
+				valid = false
+				errorString += fmt.Sprintf("\nMin scan time out of range!")
+			}
+		}
+		maxST, ok = strconv.ParseFloat(entry10.Text, 64)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for maximum scan time!")
+		} else {
+			if maxST < 0.5 || maxST > 6.0 {
+				valid = false
+				errorString += fmt.Sprintf("\nMax scan time out of range!")
+			}
+		}
+		arrivalRateScale, ok = strconv.ParseFloat(entry11.Text, 64)
+		if ok != nil {
+			valid = false
+			errorString += fmt.Sprintf("\nInvalid Input for arrival rate!")
+		} else {
+			if arrivalRateScale < 1.0 || arrivalRateScale > 60.0 {
+				valid = false
+				errorString += fmt.Sprintf("\nCustomer arrival rate out of range!")
+			}
+		}
+
+		if valid {
+			if minST > maxST {
+				valid = false
+				errorString += fmt.Sprintf("\nMin scan time is greater than max scan time!")
+			}
+			if minItems > maxItems {
+				valid = false
+				errorString += fmt.Sprintf("\nMin items is greater than max items!")
+			}
+			if checkoutsOpen > numCheckouts {
+				valid = false
+				errorString += fmt.Sprintf("\nCheckouts open is greater than number of checkouts!")
+			}
+		}
+		if !valid {
+			errorOutputLabel := widget.NewLabel(errorString)
+			errorContent := fyne.NewContainerWithoutLayout(errorOutputLabel)
+			window.SetContent(errorContent)
+			window.Resize(fyne.Size{500, 300})
+		} else {
+			minScanTime = time.Duration(minST * float64(time.Millisecond))
+			maxScanTime = time.Duration(maxST * float64(time.Millisecond))
+			custArrivalRate = time.Duration(float64(custArrivalRate) / arrivalRateScale)
+			custArrivalRate = time.Duration(float64(custArrivalRate) * weatherScale)
+
+			if runSim() == 1 {
+				outputLabel := widget.NewLabelWithStyle(postProcesses(), fyne.TextAlignLeading, fyne.TextStyle{false, false, true})
+				outputLabel.Wrapping = fyne.TextWrapOff
+				cd1 := widget.NewCard("SIMULATION REPORT", "", outputLabel)
+				scrllCont := widget.NewScrollContainer(cd1)
+				content2 := fyne.NewContainerWithLayout(layout.NewGridLayout(1), scrllCont)
+				window.SetContent(content2)
+			}
+		}
+	})
+
+	content := fyne.NewContainerWithLayout(layout.NewFormLayout(),
+		label01, entry01,
+		label02, entry02,
+		label03, entry03,
+		label04, entry04,
+		label05, entry05,
+		label06, entry06,
+		label07, entry07,
+		label08, entry08,
+		label10, entry09,
+		label11, entry10,
+		label12, entry11,
+		label13, labelfiller,
+		selectWeather, checkbox03,
+		labelfiller, label09,
+		labelfiller, radio,
+		labelfiller, labelfiller,
+		checkbox01, checkbox02,
+		labelfiller, button01,
+	)
+
+	window.SetContent(content)
+	window.Resize(fyne.Size{600, 700})
+	window.ShowAndRun()
+
+}
+
+func postProcesses() string {
+	if smartCusts {
+		sort.Sort(byTillID(tills))
+	}
+
+	totalCustsServed = 0
+	totalCusts := 0
+	tillUseTime := 0 * time.Millisecond
+	tillOpenTime := 0 * time.Millisecond
+	waitTime := 0 * time.Millisecond
+	runningUtilization := 0.0
+	output := ("INDIVIDUAL TILLS:\n")
+
+	for _, till := range tills {
+		output += fmt.Sprintf("\nTILL %d:\n", till.id)
+		if !till.open {
+			output += ("TILL CLOSED\n")
+			continue
+		}
+		if till.operator == nil {
+			output += ("NO OPERATOR ASSIGNED\n")
+			continue
+		}
+
+		if till.itemLimit < math.MaxInt32 {
+			output += ("__________________________\n")
+			output += fmt.Sprintf("%d item limit on this till\n", till.itemLimit)
+			output += ("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾\n")
+		}
+
+		totalCusts += till.customersServed
+		totalItemsProcessed += till.itemsProcessed
+		open := time.Duration(till.endTime.Sub(till.startTime))
+		tillOpenTime += open
+		tillUseTime += till.totalScanTime
+		waitTime += till.totalQueueWait
+		utilization := (float64(till.totalScanTime) / float64(open)) * 100.0
+		runningUtilization += utilization
+		meanItems := float64(till.itemsProcessed) / float64(till.customersServed)
+		meanWait := time.Duration(0)
+		if math.IsNaN(meanItems) {
+			meanItems = 0.0
+		}
+		if till.customersServed > 0 {
+			meanWait = time.Duration(float64(till.totalQueueWait*1_000) / float64(till.customersServed)).Truncate(time.Second)
+		}
+
+		output += fmt.Sprintf(" Scan Rate (per item)                        : %s\n", (till.operator.scanTime * 1_000).Truncate(time.Millisecond).String())
+		output += fmt.Sprintf(" Time Open                                   : %s\n", (open * 1_000).Truncate(time.Second).String())
+		output += fmt.Sprintf(" Total Scanning                              : %s\n", (till.totalScanTime * 1_000).Truncate(time.Second).String())
+		output += fmt.Sprintf(" Customers Served                            : %d\n", till.customersServed)
+		output += fmt.Sprintf(" Items Processed                             : %d\n", till.itemsProcessed)
+		output += fmt.Sprintf(" Mean Items Per Customer                     : %.2f\n", meanItems)
+		output += fmt.Sprintf(" Utilization                                 : %.2f%%\n", utilization)
+		output += fmt.Sprintf(" Mean Customer Wait Time                     : %s\n", meanWait.String())
+		output += fmt.Sprintf(" Cumulative time waited by customers in queue: %s\n", (till.totalQueueWait * 1_000).Truncate(time.Second).String())
+	}
+
+	output += fmt.Sprintf("\n\nTOTALS:\n")
+	output += fmt.Sprintf(" Base Customer Arrival Rate      : 1 every %s\n", (time.Duration(float64(custArrivalRate)/weatherScale) * 1_000).Truncate(time.Millisecond).String())
+	output += fmt.Sprintf(" Arrival Rate After Weather      : 1 every %s\n", (custArrivalRate * 1_000).Truncate(time.Millisecond).String())
+	output += fmt.Sprintf(" Total Customers Served          : %d\n", totalCusts)
+	output += fmt.Sprintf(" Total Customers Lost            : %d\n", custsLost)
+	output += fmt.Sprintf(" Total Items Processed           : %d\n", totalItemsProcessed)
+	output += fmt.Sprintf(" Mean Number Items per Customer  : %.2f\n", (float64(totalItemsProcessed) / float64(totalCusts)))
+	output += fmt.Sprintf(" Till Utilization                : %.2f%%\n", (float64(tillUseTime)/float64(tillOpenTime))*100.0)
+	output += fmt.Sprintf(" Mean Customer Wait Time         : %s\n", time.Duration(float64(waitTime*1_000)/float64(totalCusts)).Truncate(time.Second).String())
+	output += fmt.Sprintf(" Store Processed a customer every: %s\n", time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)).Truncate(time.Second).String())
+
+	output += fmt.Sprintf("\n\nSim RunTime: %s", simRunTime.String())
+
+	servedCustsArr := make([]*customer, totalCusts)
+	idx := 0
+	for i := range servedCusts {
+		servedCustsArr[idx] = i
+		idx++
+	}
+
+	for j, cust := range servedCustsArr {
+		output += fmt.Sprintf("\n\nCustomer %d:\n", j+1)
+		output += fmt.Sprintf(" Till Used       : %s\n", cust.queue)
+		output += fmt.Sprintf(" Items in Trolley: %d\n", cust.items)
+		output += fmt.Sprintf(" Time in Queue   : %s\n", (cust.timeInQueue * 1_000).Truncate(time.Second).String())
+		output += fmt.Sprintf(" Time at Till    : %s\n", (cust.timeAtTill * 1_000).Truncate(time.Second).String())
+	}
+
+	return output
+}
+
+func runSim() int {
+
+	tills = make([]*checkout, numCheckouts)
+	ops = make([]*operator, numOperators)
+	custs = make(chan *customer, numCusts)
+	servedCusts = make(chan *customer, numCusts)
+	spawner := time.NewTicker(custArrivalRate)
+
 	//SETUP
 	rand.Seed(time.Now().UTC().UnixNano())
-	//This seems like an appropriate place for the time mark,
-	//like when the manager first opens the door to the market at the start of the day.
 	mrManager.name = "Mr. Manager"
-	mrManager.cappedCheckRate = rand.Intn(int(checkoutsOpen / 2))
-	mrManager.itemLimit = 5
-	mrManager.isSmart = true
-	mrManager.isQuikCheck = true
-
-	//Modify the customer arrival rate based on the weather
-	custArrivalRate = time.Duration(float64(custArrivalRate) * float64(weatherScale[setWeather]))
+	var num int
+	if isItemLimit && limitedCheckoutRate > 0 {
+		if checkoutsOpen%2 == 0 {
+			num = checkoutsOpen / limitedCheckoutRate
+			if num <= 0 {
+				num = 1
+			}
+			mrManager.cappedCheckRate = num
+		} else {
+			num = (checkoutsOpen - 1) / limitedCheckoutRate
+			if num <= 0 {
+				num = 1
+			}
+			mrManager.cappedCheckRate = num
+		}
+	} else {
+		mrManager.cappedCheckRate = 0
+	}
+	mrManager.itemLimit = managerItemLimit
+	mrManager.isSmart = smartManager
+	mrManager.isItemLimit = isItemLimit
 
 	//checkout setup
 	for i := range tills {
@@ -213,7 +576,7 @@ func main() {
 
 	//checkout operator setup
 	for i := range ops {
-		ops[i] = &operator{time.Duration(rand.Intn(int(maxScanTime-minScanTime) + int(minScanTime+1)))}
+		ops[i] = &operator{time.Duration(rand.Intn(int((maxScanTime-minScanTime)+1)) + int(minScanTime))}
 	}
 
 	//Mr Manager is a good manager and makes sure to always pick the quickest available operator.
@@ -258,6 +621,7 @@ func main() {
 						check.totalScanTime += c.timeAtTill
 						check.itemsProcessed += c.items
 						check.customersServed++
+
 					}
 				}
 			}(till, wg)
@@ -265,8 +629,8 @@ func main() {
 
 	}
 
-	//does not need to be goroutine atm, but probably will later
 	simStart := time.Now()
+
 SpawnLoop:
 	for {
 		select {
@@ -278,7 +642,6 @@ SpawnLoop:
 				}
 				if !c.joinQue(tills) {
 					custsLost++
-					//fmt.Println("A customer left")
 				}
 
 			default:
@@ -300,103 +663,14 @@ SpawnLoop:
 		till.endTime = time.Now()
 	}
 
-	simRunTime := time.Since(simStart)
-
+	simRunTime = time.Since(simStart)
 	close(servedCusts)
-	fmt.Println()
-	totalCusts := 0
-	tillUseTime := 0 * time.Microsecond
-	tillOpenTime := 0 * time.Microsecond
-	waitTime := 0 * time.Microsecond
-	runningUtilization := 0.0
-	weatherToday := weatherStrings[setWeather]
-	fmt.Printf("The weather today is %s !\n", weatherToday)
-	fmt.Println("Customer arrival rate:", custArrivalRate)
 
-	fmt.Println("Manager Name:", mrManager.name, "\nItem Limit:", mrManager.itemLimit, "\nIs smart?:", mrManager.isSmart, "\nItem Limited Checkouts?:", mrManager.isQuikCheck, "\nQuikCheckChance:", mrManager.cappedCheckRate)
-	if smartCusts {
-		sort.Sort(byTillID(tills))
-	}
+	return 1
+}
 
-	fmt.Println("**********\nSIM REPORT\n**********")
-	fmt.Println("\nINDIVIDUAL TILLS:")
+func main() {
 
-	for _, till := range tills {
-		fmt.Printf("\nTILL %d:\n", till.id)
-		if !till.open {
-			fmt.Println("TILL CLOSED")
-			continue
-		}
-		if till.operator == nil {
-			fmt.Println("NO OPERATOR ASSIGNED")
-			continue
-		}
+	gui()
 
-		if till.itemLimit < math.MaxInt32 {
-			fmt.Println("__________________________")
-			fmt.Println(till.itemLimit, "item limit on this till")
-			fmt.Println("‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾")
-		}
-
-		totalCusts += till.customersServed
-		totalItemsProcessed += till.itemsProcessed
-		open := time.Duration(till.endTime.Sub(till.startTime))
-		tillOpenTime += open
-		tillUseTime += till.totalScanTime
-		waitTime += till.totalQueueWait
-		utilization := (float64(till.totalScanTime) / float64(open)) * 100.0
-		runningUtilization += utilization
-		meanItems := float64(till.itemsProcessed) / float64(till.customersServed)
-		meanWait := time.Duration(0)
-		if math.IsNaN(meanItems) {
-			meanItems = 0.0
-		}
-		if till.customersServed > 0 {
-			meanWait = time.Duration(float64(till.totalQueueWait*1_000) / float64(till.customersServed)).Truncate(time.Second)
-		}
-
-		fmt.Println(" Time Open                              :", (open * 1_000).Truncate(time.Second))
-		fmt.Println(" Total Scanning                         :", (till.totalScanTime * 1_000).Truncate(time.Second))
-		fmt.Println(" Customers Served                       :", till.customersServed)
-		fmt.Println(" Items Processed                        :", till.itemsProcessed)
-		fmt.Printf(" Mean Items Per Customer                : %.2f\n", meanItems)
-		fmt.Printf(" Utilization                            : %.2f%%\n", utilization)
-		fmt.Println(" Mean Customer Wait Time                :", meanWait)
-		fmt.Println(" Total time waited by customers in queue:", (till.totalQueueWait * 1_000).Truncate(time.Second))
-	}
-
-	divisor := checkoutsOpen
-	if numOperators < checkoutsOpen {
-		divisor = numOperators
-	}
-
-	fmt.Println("\n\nTOTALS:")
-	fmt.Println(" Total Customers Served          :", totalCusts)
-	fmt.Println(" Total Customers Lost            :", custsLost)
-	fmt.Println(" Total Items Processed           :", totalItemsProcessed)
-	fmt.Printf(" Mean Number Items per Customer  : %.2f\n", (float64(totalItemsProcessed) / float64(totalCusts)))
-
-	fmt.Printf("\n Total Till Utilization          : %.2f%%\n", (float64(tillUseTime)/float64(tillOpenTime))*100.0)
-	fmt.Printf(" Mean Till Utilization           : %.2f%%\n", runningUtilization/float64(divisor))
-	fmt.Println(" Mean Customer Wait Time         :", time.Duration(float64(waitTime*1_000)/float64(totalCusts)).Truncate(time.Second))
-	fmt.Println(" Store Processed a customer every:", time.Duration(float64(tillUseTime*1_000)/float64(totalCusts)).Truncate(time.Second))
-
-	fmt.Println("\n\nSim RunTime:", simRunTime)
-
-	fmt.Println("\n\nCUSTOMER INFO:")
-
-	servedCustsArr := make([]*customer, totalCusts)
-	idx := 0
-	for i := range servedCusts {
-		servedCustsArr[idx] = i
-		idx++
-	}
-
-	for j, cust := range servedCustsArr {
-		fmt.Println("\nCustomer:", j+1)
-		fmt.Println(" Served at till number:", cust.queue)
-		fmt.Println(" Items in Trolley     :", cust.items)
-		fmt.Println(" Time in Queue        :", (cust.timeInQueue * 1_000))
-		fmt.Println(" Time at Till         :", (cust.timeAtTill * 1_000))
-	}
 }
