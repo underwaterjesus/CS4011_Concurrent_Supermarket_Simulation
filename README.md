@@ -3,6 +3,7 @@
 <p align="justify">
 The goal of this assignment was to create a supermarket simulation in the Go programming language, that can run in a concurrent manner.<br>
 Our submission also has the added value of a graphical user interface. This was created using the <a title="Fyne Homepage" href="https://fyne.io">Fyne</a> widget API. This API is cross platform and should run on most opersting systems.<br>
+An executable was produced for ease of displaying our project to the course professor. This will only run on some Windows 10 machines.
 </p>
 <br>
 Our submission allows users to simulate the passage of up to 200 customers through a variable number of checkouts.<br>
